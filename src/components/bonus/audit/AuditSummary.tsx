@@ -1,5 +1,5 @@
 import { BonusCamadas, Config, Employee, OSRecord } from "@/types/bonus";
-import { formatBRL, formatPercent } from "@/lib/database";
+import { formatBRL, formatPercent } from "@/lib/formatters";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -7,7 +7,6 @@ import {
   Target,
   Clock,
   Award,
-  CheckCircle,
   BarChart3,
   Zap,
 } from "lucide-react";
@@ -150,7 +149,6 @@ function MetricCard({
   icon,
   label,
   value,
-  hint,
 }: {
   icon: React.ReactNode;
   label: string;
