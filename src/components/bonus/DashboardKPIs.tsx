@@ -4,6 +4,7 @@ import { FileSpreadsheet, Download, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useBonus } from "@/contexts/BonusContext";
 import { KPICard } from "./KPICard";
+import { MonthSelector } from "./MonthSelector";
 import { openAuditWindow } from "./audit";
 import {
   formatBRL,
@@ -107,7 +108,15 @@ export function DashboardKPIs() {
       animate={{ opacity: 1, y: 0 }}
       className="glass-card rounded-xl p-4 space-y-4"
     >
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      {/* Month Selector */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <MonthSelector />
+        <div className="text-sm text-muted-foreground">
+          {stats.totalOS} OS registradas
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
         <KPICard
           label="Bônus do mês"
           value={formatBRL(stats.totalBonus)}
@@ -124,11 +133,6 @@ export function DashboardKPIs() {
           label="Total OS"
           value={stats.totalOS}
           hint="OS registradas no mês"
-        />
-        <KPICard
-          label="Mês"
-          value={monthKey}
-          hint="Mês de referência"
         />
       </div>
 
