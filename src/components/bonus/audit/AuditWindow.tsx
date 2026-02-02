@@ -122,30 +122,102 @@ function AuditContent({ db, initialMonthKey, employee }: AuditContentProps) {
     setIsExporting(true);
     
     try {
-      const clone = contentRef.current.cloneNode(true) as HTMLElement;
-      clone.querySelectorAll('.no-print').forEach(el => el.remove());
+      // Hide buttons during capture
+      const buttons = contentRef.current.querySelectorAll('.no-print');
+      buttons.forEach(btn => (btn as HTMLElement).style.display = 'none');
       
-      const styles = Array.from(document.querySelectorAll('link[rel="stylesheet"], style'))
-        .map((el) => el.outerHTML)
-        .join("\n");
+      // Use html2canvas to render the entire content including charts as an image
+      const canvas = await html2canvas(contentRef.current, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#0a0a0f',
+        windowWidth: contentRef.current.scrollWidth,
+        windowHeight: contentRef.current.scrollHeight,
+      });
       
-      const html = `
-<!DOCTYPE html>
-<html lang="pt-BR" class="dark">
+      // Restore buttons
+      buttons.forEach(btn => (btn as HTMLElement).style.display = '');
+      
+      // Convert canvas to base64 image
+      const imgData = canvas.toDataURL("image/png");
+      
+      // Generate a fully self-contained HTML with embedded image
+      const html = `<!DOCTYPE html>
+<html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Auditoria de Bônus - ${employee.name} - ${monthKey}</title>
-    ${styles}
     <style>
-      body { background: #0a0a0f; color: white; }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body { 
+        background: #0a0a0f; 
+        color: white; 
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 20px;
+      }
+      .report-header {
+        text-align: center;
+        margin-bottom: 20px;
+        padding: 20px;
+        background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(16, 185, 129, 0.1));
+        border-radius: 12px;
+        border: 1px solid rgba(139, 92, 246, 0.2);
+        width: 100%;
+        max-width: 1200px;
+      }
+      .report-header h1 { 
+        font-size: 24px; 
+        margin-bottom: 8px;
+        background: linear-gradient(90deg, #8b5cf6, #10b981);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+      .report-header p { color: #9ca3af; font-size: 14px; }
+      .report-image { 
+        max-width: 100%; 
+        border-radius: 12px;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+      .footer {
+        margin-top: 20px;
+        text-align: center;
+        color: #6b7280;
+        font-size: 12px;
+      }
       @media print {
-        body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        body { 
+          background: white; 
+          padding: 0;
+          -webkit-print-color-adjust: exact; 
+          print-color-adjust: exact; 
+        }
+        .report-header { display: none; }
+        .report-image { 
+          width: 100%;
+          box-shadow: none;
+          border: none;
+        }
       }
     </style>
   </head>
   <body>
-    ${clone.outerHTML}
+    <div class="report-header">
+      <h1>🛡️ G2R • Auditoria de Bônus</h1>
+      <p><strong>${employee.name}</strong> | ${employee.role} | Período: ${monthKey}</p>
+      <p style="margin-top: 8px; font-size: 11px;">Gerado em: ${new Date().toLocaleString("pt-BR")}</p>
+    </div>
+    <img src="${imgData}" alt="Relatório de Auditoria" class="report-image" />
+    <div class="footer">
+      <p>Este relatório foi gerado automaticamente pelo Sistema de Bônus G2R</p>
+      <p>Documento válido como comprovante de auditoria</p>
+    </div>
   </body>
 </html>`;
       
@@ -153,7 +225,7 @@ function AuditContent({ db, initialMonthKey, employee }: AuditContentProps) {
       const url = URL.createObjectURL(blob);
       
       // Open the HTML in a new tab for viewing
-      const newWindow = window.open(url, "_blank");
+      window.open(url, "_blank");
       
       // Also offer download
       const a = document.createElement("a");
@@ -161,12 +233,12 @@ function AuditContent({ db, initialMonthKey, employee }: AuditContentProps) {
       a.download = `auditoria_${employee.name.replace(/\s+/g, "_")}_${monthKey}.html`;
       a.click();
       
-      // Clean up after a short delay to allow the new window to load
+      // Clean up after a delay
       setTimeout(() => {
         URL.revokeObjectURL(url);
-      }, 5000);
+      }, 10000);
       
-      toast.success("HTML exportado e aberto em nova aba!");
+      toast.success("HTML exportado com gráficos incluídos!");
     } catch (error) {
       console.error("Erro ao exportar HTML:", error);
       toast.error("Erro ao exportar HTML. Tente novamente.");
