@@ -13,6 +13,8 @@ import { OSRecord, SortType } from "@/types/bonus";
 import { cn } from "@/lib/utils";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
+import { usePagination } from "@/hooks/usePagination";
+import { PaginationControls } from "@/components/PaginationControls";
 
 interface OSListProps {
   onEdit: (os: OSRecord) => void;
@@ -60,6 +62,19 @@ export function OSList({ onEdit }: OSListProps) {
 
     return list;
   }, [getMonthOSList, filterTec, filterCliente, sortBy]);
+
+  // Pagination
+  const {
+    paginatedItems,
+    currentPage,
+    totalPages,
+    totalItems,
+    startIndex,
+    endIndex,
+    pageSize,
+    goToPage,
+    setPageSize,
+  } = usePagination(filteredAndSorted, { initialPageSize: 15 });
 
   const handleDeleteClick = (os: OSRecord) => {
     setDeleteTarget(os);
@@ -156,14 +171,16 @@ export function OSList({ onEdit }: OSListProps) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredAndSorted.length === 0 ? (
+              {paginatedItems.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={isGestor ? 10 : 9} className="text-center py-8 text-muted-foreground">
-                    Nenhuma OS encontrada para este mês.
+                    {filteredAndSorted.length === 0 
+                      ? "Nenhuma OS encontrada para este mês."
+                      : "Nenhuma OS na página atual."}
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredAndSorted.map((os) => {
+                paginatedItems.map((os) => {
                   const diff = getDifficultyById(db.cfg, os.dificuldadeId);
                   const dur = getDurationById(db.cfg, os.duracaoId);
                   return (
@@ -214,6 +231,21 @@ export function OSList({ onEdit }: OSListProps) {
           </Table>
         </div>
       </div>
+
+      {/* Pagination */}
+      {filteredAndSorted.length > 0 && (
+        <PaginationControls
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={totalItems}
+          startIndex={startIndex}
+          endIndex={endIndex}
+          pageSize={pageSize}
+          onPageChange={goToPage}
+          onPageSizeChange={setPageSize}
+          pageSizeOptions={[10, 15, 25, 50]}
+        />
+      )}
 
       {/* Delete Confirmation Dialog */}
       <ConfirmDeleteDialog

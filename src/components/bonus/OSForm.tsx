@@ -10,10 +10,11 @@ import { useBonus } from "@/contexts/BonusContext";
 import { CRITERIA, OS_TYPES } from "@/lib/constants";
 import { generateId, clampInt, toNum } from "@/lib/numberHelpers";
 import { todayISO, monthKeyFromDate } from "@/lib/dateHelpers";
-import { getDifficultyById, getDurationById, calculateOSMetrics } from "@/lib/bonusCalculator";
+import { calculateOSMetrics } from "@/lib/bonusCalculator";
 import { OSRecord } from "@/types/bonus";
 import { KPICard } from "./KPICard";
 import { toast } from "sonner";
+import { osFormSchema, getFirstError } from "@/lib/validations";
 
 interface OSFormProps {
   editingOS?: OSRecord | null;
@@ -81,22 +82,26 @@ export function OSForm({ editingOS, onClearEditing }: OSFormProps) {
   }, [critValues, dificuldadeId, duracaoId, db.cfg]);
 
   const validateForm = useCallback((): boolean => {
-    const emp = db.employees.find((e) => e.id === selectedEmployeeId);
-    
-    if (!emp) {
-      toast.error("Selecione um colaborador");
-      return false;
-    }
-    if (!osId.trim()) {
-      toast.error("Informe o número da OS");
-      return false;
-    }
-    if (!cliente.trim()) {
-      toast.error("Informe o cliente");
+    const formData = {
+      osId: osId.trim(),
+      cliente: cliente.trim(),
+      date,
+      tipo,
+      dificuldadeId,
+      duracaoId,
+      valorOs: valorOs ? toNum(valorOs) : undefined,
+      setor: setor.trim() || undefined,
+      obs: obs.trim() || undefined,
+      employeeId: selectedEmployeeId,
+    };
+
+    const error = getFirstError(osFormSchema, formData);
+    if (error) {
+      toast.error(error);
       return false;
     }
     return true;
-  }, [db.employees, selectedEmployeeId, osId, cliente]);
+  }, [osId, cliente, date, tipo, dificuldadeId, duracaoId, valorOs, setor, obs, selectedEmployeeId]);
 
   const handleSave = useCallback(async () => {
     if (!validateForm()) return;

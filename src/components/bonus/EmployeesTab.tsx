@@ -10,6 +10,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { toast } from "sonner";
+import { employeeFormSchema, getFirstError } from "@/lib/validations";
 
 export function EmployeesTab() {
   const { db, monthKey, addEmployee, removeEmployee, setHorasTrabalhadas, isLoading } = useBonus();
@@ -26,25 +27,27 @@ export function EmployeesTab() {
   };
 
   const handleAdd = async () => {
-    if (!newName.trim()) {
-      toast.error("Informe o nome do colaborador");
-      return;
-    }
-    if (!newEmail.trim()) {
-      toast.error("Informe o email do colaborador");
+    // Validate with Zod
+    const formData = {
+      name: newName.trim(),
+      role: newRole.trim() || undefined,
+      email: newEmail.trim().toLowerCase(),
+    };
+
+    const error = getFirstError(employeeFormSchema, formData);
+    if (error) {
+      toast.error(error);
       return;
     }
     
     setIsAdding(true);
     try {
-      await addEmployee(newName.trim(), newRole.trim(), newEmail.trim().toLowerCase());
+      await addEmployee(formData.name, formData.role || "", formData.email);
       setNewName("");
       setNewRole("");
       setNewEmail("");
     } catch (error: any) {
-      if (error.message?.includes("duplicate key")) {
-        toast.error("Já existe um colaborador com este email");
-      }
+      // Error is already handled by the hook with toast
     } finally {
       setIsAdding(false);
     }

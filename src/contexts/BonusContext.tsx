@@ -1,11 +1,11 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDataFetcher } from "@/hooks/useDataFetcher";
-import { useOSOperations } from "@/hooks/useOSOperations";
-import { useEmployeeOperations } from "@/hooks/useEmployeeOperations";
+import { useOptimisticOS } from "@/hooks/useOptimisticOS";
+import { useOptimisticEmployees } from "@/hooks/useOptimisticEmployees";
 import { useConfigOperations } from "@/hooks/useConfigOperations";
 import { useHorasOperations } from "@/hooks/useHorasOperations";
-import { OSRecord, TabType, Config, Database } from "@/types/bonus";
+import { OSRecord, Employee, TabType, Config, Database } from "@/types/bonus";
 import { DEFAULT_CONFIG } from "@/lib/constants";
 
 interface BonusContextValue {
@@ -52,11 +52,43 @@ export function BonusProvider({ children }: { children: React.ReactNode }) {
   const [activeTab, setActiveTab] = useState<TabType>("os");
 
   // Use the data fetcher hook
-  const { db, isLoading, error, fetchData } = useDataFetcher(user);
+  const { db: fetchedDb, isLoading, error, fetchData } = useDataFetcher(user);
 
-  // Use operation hooks with unified refresh callback
-  const osOperations = useOSOperations({ isGestor, onSuccess: fetchData });
-  const employeeOperations = useEmployeeOperations({ isGestor, onSuccess: fetchData });
+  // Optimistic state for OS and Employees
+  const [optimisticOS, setOptimisticOS] = useState<OSRecord[]>([]);
+  const [optimisticEmployees, setOptimisticEmployees] = useState<Employee[]>([]);
+
+  // Sync optimistic state with fetched data
+  useEffect(() => {
+    setOptimisticOS(fetchedDb.os);
+  }, [fetchedDb.os]);
+
+  useEffect(() => {
+    setOptimisticEmployees(fetchedDb.employees);
+  }, [fetchedDb.employees]);
+
+  // Create db object with optimistic data
+  const db: Database = {
+    ...fetchedDb,
+    os: optimisticOS,
+    employees: optimisticEmployees,
+  };
+
+  // Use optimistic operation hooks
+  const osOperations = useOptimisticOS({
+    isGestor,
+    osList: optimisticOS,
+    setOptimisticOS,
+    onSuccess: fetchData,
+  });
+
+  const employeeOperations = useOptimisticEmployees({
+    isGestor,
+    employees: optimisticEmployees,
+    setOptimisticEmployees,
+    onSuccess: fetchData,
+  });
+
   const configOperations = useConfigOperations({ isGestor, onSuccess: fetchData });
   const horasOperations = useHorasOperations({ isGestor, monthKey, onSuccess: fetchData });
 
