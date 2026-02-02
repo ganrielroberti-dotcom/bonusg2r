@@ -12,25 +12,9 @@ export const queryKeys = {
   auditLog: (filters?: AuditLogFilters) => ["audit_log", filters] as const,
 };
 
-// ===== Types =====
-interface AuditLogFilters {
-  tableName?: string;
-  startDate?: string;
-  endDate?: string;
-  limit?: number;
-}
-
-export interface AuditLogEntry {
-  id: string;
-  table_name: string;
-  record_id: string;
-  action: "INSERT" | "UPDATE" | "DELETE";
-  old_data: Record<string, unknown> | null;
-  new_data: Record<string, unknown> | null;
-  changed_by: string | null;
-  changed_by_email: string | null;
-  changed_at: string;
-}
+// Import types from audit module
+import { AuditLogFilters, AuditLogEntry } from "@/components/bonus/audit/types";
+export type { AuditLogFilters, AuditLogEntry };
 
 // ===== Config Query =====
 export function useConfig() {
