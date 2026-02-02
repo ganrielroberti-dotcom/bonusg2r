@@ -9,6 +9,7 @@ import { useBonus } from "@/contexts/BonusContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
+import { HoursInput } from "./employees/HoursInput";
 import { toast } from "sonner";
 import { employeeFormSchema, getFirstError } from "@/lib/validations";
 
@@ -171,16 +172,10 @@ export function EmployeesTab() {
                   <div className="flex items-center gap-3">
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-muted-foreground">Horas:</span>
-                      <Input
-                        type="number"
-                        min="0"
-                        step="1"
-                        value={horas || ""}
-                        onChange={(e) =>
-                          setHorasTrabalhadas(emp.id, Number(e.target.value) || 0)
-                        }
-                        placeholder="0"
-                        className="w-20 input-focus-ring"
+                      <HoursInput
+                        employeeId={emp.id}
+                        initialHours={horas}
+                        onSave={setHorasTrabalhadas}
                       />
                     </div>
                     <Button

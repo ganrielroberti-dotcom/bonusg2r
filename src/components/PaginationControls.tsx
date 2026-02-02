@@ -1,3 +1,4 @@
+import * as React from "react";
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -14,21 +15,22 @@ interface PaginationControlsProps {
   pageSizeOptions?: number[];
 }
 
-export function PaginationControls({
-  currentPage,
-  totalPages,
-  totalItems,
-  startIndex,
-  endIndex,
-  pageSize,
-  onPageChange,
-  onPageSizeChange,
-  pageSizeOptions = [10, 20, 50, 100],
-}: PaginationControlsProps) {
+export const PaginationControls = React.forwardRef<HTMLDivElement, PaginationControlsProps>(
+  function PaginationControls({
+    currentPage,
+    totalPages,
+    totalItems,
+    startIndex,
+    endIndex,
+    pageSize,
+    onPageChange,
+    onPageSizeChange,
+    pageSizeOptions = [10, 20, 50, 100],
+  }, ref) {
   if (totalItems === 0) return null;
 
-  return (
-    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 py-4">
+    return (
+      <div ref={ref} className="flex flex-col sm:flex-row items-center justify-between gap-4 py-4">
       {/* Info */}
       <div className="text-sm text-muted-foreground">
         Mostrando <span className="font-medium">{startIndex + 1}</span> a{" "}
@@ -104,4 +106,6 @@ export function PaginationControls({
       </div>
     </div>
   );
-}
+});
+
+PaginationControls.displayName = "PaginationControls";
