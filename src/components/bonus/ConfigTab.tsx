@@ -1,31 +1,45 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Save, AlertTriangle, Info } from "lucide-react";
+import { Save, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useBonus } from "@/contexts/BonusContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { toNum } from "@/lib/database";
+import { toast } from "sonner";
 
 export function ConfigTab() {
-  const { db, updateConfig, resetAll } = useBonus();
+  const { db, updateConfig } = useBonus();
+  const { isGestor } = useAuth();
   
   const [bonusCap, setBonusCap] = useState(String(db.cfg.bonusCap || 600));
   const [horasEsperadas, setHorasEsperadas] = useState(String(db.cfg.horasEsperadas || 220));
 
-  const handleSave = () => {
-    updateConfig({
-      bonusCap: toNum(bonusCap),
-      horasEsperadas: toNum(horasEsperadas) || 220,
-    });
-    alert("Configurações salvas!");
-  };
+  useEffect(() => {
+    setBonusCap(String(db.cfg.bonusCap || 600));
+    setHorasEsperadas(String(db.cfg.horasEsperadas || 220));
+  }, [db.cfg]);
 
-  const handleResetAll = () => {
-    if (confirm("Zerar o banco inteiro? Todos os dados serão perdidos.")) {
-      resetAll();
+  const handleSave = async () => {
+    try {
+      await updateConfig({
+        bonusCap: toNum(bonusCap),
+        horasEsperadas: toNum(horasEsperadas) || 220,
+      });
+      toast.success("Configurações salvas!");
+    } catch {
+      toast.error("Erro ao salvar configurações");
     }
   };
+
+  if (!isGestor) {
+    return (
+      <div className="text-center py-8 text-muted-foreground">
+        Apenas gestores podem alterar configurações.
+      </div>
+    );
+  }
 
   return (
     <motion.div
@@ -91,16 +105,10 @@ export function ConfigTab() {
 
       <div className="h-px bg-border" />
 
-      <div className="flex gap-3 flex-wrap">
-        <Button onClick={handleSave} className="btn-primary-glow gap-2">
-          <Save className="w-4 h-4" />
-          Salvar Config
-        </Button>
-        <Button variant="destructive" onClick={handleResetAll} className="gap-2">
-          <AlertTriangle className="w-4 h-4" />
-          Zerar TUDO
-        </Button>
-      </div>
+      <Button onClick={handleSave} className="btn-primary-glow gap-2">
+        <Save className="w-4 h-4" />
+        Salvar Config
+      </Button>
     </motion.div>
   );
 }

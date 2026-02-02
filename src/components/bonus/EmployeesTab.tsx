@@ -1,39 +1,67 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { UserPlus, Trash2, Clock } from "lucide-react";
+import { UserPlus, Trash2, Clock, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useBonus } from "@/contexts/BonusContext";
-import { getHorasTrabalhadas } from "@/lib/database";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 
 export function EmployeesTab() {
   const { db, monthKey, addEmployee, removeEmployee, setHorasTrabalhadas } = useBonus();
+  const { isGestor } = useAuth();
   const [newName, setNewName] = useState("");
   const [newRole, setNewRole] = useState("");
+  const [newEmail, setNewEmail] = useState("");
 
-  const handleAdd = () => {
+  const getHoras = (empId: string) => {
+    return db.horasTrabalhadas[monthKey]?.[empId] || 0;
+  };
+
+  const handleAdd = async () => {
     if (!newName.trim()) {
-      alert("Informe o nome do colaborador");
+      toast.error("Informe o nome do colaborador");
       return;
     }
-    addEmployee(newName.trim(), newRole.trim());
-    setNewName("");
-    setNewRole("");
+    if (!newEmail.trim()) {
+      toast.error("Informe o email do colaborador");
+      return;
+    }
+    try {
+      await addEmployee(newName.trim(), newRole.trim(), newEmail.trim().toLowerCase());
+      setNewName("");
+      setNewRole("");
+      setNewEmail("");
+      toast.success("Colaborador adicionado!");
+    } catch (error: any) {
+      if (error.message?.includes("duplicate key")) {
+        toast.error("Já existe um colaborador com este email");
+      } else {
+        toast.error("Erro ao adicionar colaborador");
+      }
+    }
   };
 
-  const handleDelete = (id: string, name: string) => {
+  const handleDelete = async (id: string, name: string) => {
     if (confirm(`Excluir colaborador "${name}"?`)) {
-      removeEmployee(id);
+      try {
+        await removeEmployee(id);
+        toast.success("Colaborador removido");
+      } catch {
+        toast.error("Erro ao remover colaborador");
+      }
     }
   };
 
-  const handleDeleteAll = () => {
-    if (confirm("Apagar TODOS os colaboradores?")) {
-      db.employees.forEach((e) => removeEmployee(e.id));
-    }
-  };
+  if (!isGestor) {
+    return (
+      <div className="text-center py-8 text-muted-foreground">
+        Apenas gestores podem gerenciar colaboradores.
+      </div>
+    );
+  }
 
   return (
     <motion.div
@@ -42,7 +70,7 @@ export function EmployeesTab() {
       className="space-y-6"
     >
       {/* Add new employee */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div className="space-y-1.5">
           <Label htmlFor="newEmpName">Nome</Label>
           <Input
@@ -63,18 +91,26 @@ export function EmployeesTab() {
             className="input-focus-ring"
           />
         </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="newEmpEmail" className="flex items-center gap-1.5">
+            <Mail className="w-3.5 h-3.5" />
+            Email
+          </Label>
+          <Input
+            id="newEmpEmail"
+            type="email"
+            value={newEmail}
+            onChange={(e) => setNewEmail(e.target.value)}
+            placeholder="email@empresa.com"
+            className="input-focus-ring"
+          />
+        </div>
       </div>
 
-      <div className="flex gap-3 flex-wrap">
-        <Button onClick={handleAdd} className="btn-primary-glow gap-2">
-          <UserPlus className="w-4 h-4" />
-          Adicionar
-        </Button>
-        <Button variant="destructive" onClick={handleDeleteAll} className="gap-2">
-          <Trash2 className="w-4 h-4" />
-          Excluir todos
-        </Button>
-      </div>
+      <Button onClick={handleAdd} className="btn-primary-glow gap-2">
+        <UserPlus className="w-4 h-4" />
+        Adicionar Colaborador
+      </Button>
 
       <div className="h-px bg-border" />
 
@@ -92,7 +128,7 @@ export function EmployeesTab() {
         ) : (
           <div className="space-y-2">
             {db.employees.map((emp) => {
-              const horas = getHorasTrabalhadas(db, monthKey, emp.id);
+              const horas = getHoras(emp.id);
               return (
                 <motion.div
                   key={emp.id}
@@ -100,12 +136,17 @@ export function EmployeesTab() {
                   animate={{ opacity: 1, x: 0 }}
                   className="flex items-center justify-between gap-4 p-3 rounded-lg bg-secondary/30 border border-border/50"
                 >
-                  <div className="flex items-center gap-3 flex-wrap min-w-0">
-                    <Badge variant="secondary" className="font-bold">
-                      {emp.name}
-                    </Badge>
-                    {emp.role && (
-                      <span className="text-xs text-muted-foreground">{emp.role}</span>
+                  <div className="flex flex-col gap-1 min-w-0">
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <Badge variant="secondary" className="font-bold">
+                        {emp.name}
+                      </Badge>
+                      {emp.role && (
+                        <span className="text-xs text-muted-foreground">{emp.role}</span>
+                      )}
+                    </div>
+                    {"email" in emp && (
+                      <span className="text-xs text-muted-foreground/70">{(emp as any).email}</span>
                     )}
                   </div>
 
@@ -138,6 +179,11 @@ export function EmployeesTab() {
           </div>
         )}
       </div>
+
+      <p className="text-xs text-muted-foreground">
+        <strong>Importante:</strong> O email do colaborador será usado para login. 
+        Quando o colaborador se cadastrar com o mesmo email, ele terá acesso apenas às suas próprias OS.
+      </p>
     </motion.div>
   );
 }

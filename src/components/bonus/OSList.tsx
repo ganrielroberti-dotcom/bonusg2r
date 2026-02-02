@@ -7,9 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useBonus } from "@/contexts/BonusContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { getDifficultyById, getDurationById } from "@/lib/database";
 import { OSRecord, SortType } from "@/types/bonus";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 interface OSListProps {
   onEdit: (os: OSRecord) => void;
@@ -17,6 +19,7 @@ interface OSListProps {
 
 export function OSList({ onEdit }: OSListProps) {
   const { db, getMonthOSList, removeOS } = useBonus();
+  const { isGestor } = useAuth();
   const [filterTec, setFilterTec] = useState("");
   const [filterCliente, setFilterCliente] = useState("");
   const [sortBy, setSortBy] = useState<SortType>("data_desc");
@@ -55,9 +58,15 @@ export function OSList({ onEdit }: OSListProps) {
     return list;
   }, [getMonthOSList, filterTec, filterCliente, sortBy]);
 
-  const handleDelete = (os: OSRecord) => {
+  const handleDelete = async (os: OSRecord) => {
+    if (!isGestor) return;
     if (confirm(`Excluir OS ${os.osId}?`)) {
-      removeOS(os.id);
+      try {
+        await removeOS(os.id);
+        toast.success("OS removida");
+      } catch {
+        toast.error("Erro ao remover OS");
+      }
     }
   };
 
@@ -132,13 +141,13 @@ export function OSList({ onEdit }: OSListProps) {
                 <TableHead className="font-bold text-right">Score</TableHead>
                 <TableHead className="font-bold text-right">CE Final</TableHead>
                 <TableHead className="font-bold text-right">CE qual.</TableHead>
-                <TableHead className="font-bold w-24"></TableHead>
+                {isGestor && <TableHead className="font-bold w-24"></TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredAndSorted.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={isGestor ? 10 : 9} className="text-center py-8 text-muted-foreground">
                     Nenhuma OS encontrada para este mês.
                   </TableCell>
                 </TableRow>
@@ -164,26 +173,28 @@ export function OSList({ onEdit }: OSListProps) {
                       </TableCell>
                       <TableCell className="text-right font-mono">{os.ceFinal.toFixed(2)}</TableCell>
                       <TableCell className="text-right font-mono">{os.ceQ.toFixed(2)}</TableCell>
-                      <TableCell>
-                        <div className="flex gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() => onEdit(os)}
-                          >
-                            <Edit className="w-3.5 h-3.5" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-destructive hover:text-destructive"
-                            onClick={() => handleDelete(os)}
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </Button>
-                        </div>
-                      </TableCell>
+                      {isGestor && (
+                        <TableCell>
+                          <div className="flex gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => onEdit(os)}
+                            >
+                              <Edit className="w-3.5 h-3.5" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-destructive hover:text-destructive"
+                              onClick={() => handleDelete(os)}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      )}
                     </motion.tr>
                   );
                 })
