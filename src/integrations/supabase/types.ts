@@ -77,6 +77,24 @@ export type Database = {
         }
         Relationships: []
       }
+      gestor_emails: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+        }
+        Relationships: []
+      }
       horas_trabalhadas: {
         Row: {
           employee_id: string
