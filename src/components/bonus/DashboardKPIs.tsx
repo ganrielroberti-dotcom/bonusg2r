@@ -6,16 +6,12 @@ import { useBonus } from "@/contexts/BonusContext";
 import { KPICard } from "./KPICard";
 import { MonthSelector } from "./MonthSelector";
 import { openAuditWindow } from "./audit";
-import {
-  formatBRL,
-  getMonthOS,
-  calcBonusCamadas,
-  exportToCSV,
-  getDifficultyById,
-  getDurationById,
-  clampInt,
-} from "@/lib/database";
+import { formatBRL } from "@/lib/formatters";
+import { clampInt } from "@/lib/numberHelpers";
+import { getMonthOS, calcBonusCamadas, getDifficultyById, getDurationById } from "@/lib/bonusCalculator";
+import { exportToCSV } from "@/lib/database";
 import { CRITERIA } from "@/lib/constants";
+import { toast } from "sonner";
 
 export function DashboardKPIs() {
   const { db, monthKey, selectedEmployeeId } = useBonus();
@@ -65,6 +61,7 @@ export function DashboardKPIs() {
 
     const stamp = new Date().toISOString().slice(0, 10);
     exportToCSV(rows, `g2r_ce_os_${monthKey}_${stamp}.csv`);
+    toast.success("Exportação do mês gerada");
   };
 
   const handleExportAll = () => {
@@ -92,11 +89,12 @@ export function DashboardKPIs() {
 
     const stamp = new Date().toISOString().slice(0, 10);
     exportToCSV(rows, `g2r_ce_os_todas_${stamp}.csv`);
+    toast.success("Exportação completa gerada");
   };
 
   const handleAudit = () => {
     if (!selectedEmployeeId) {
-      alert("Selecione um colaborador para gerar a auditoria.");
+      toast.error("Selecione um colaborador para gerar a auditoria");
       return;
     }
     openAuditWindow(db, monthKey, selectedEmployeeId);

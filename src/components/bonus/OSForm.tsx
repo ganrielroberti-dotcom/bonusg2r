@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { motion } from "framer-motion";
 import { Save, RotateCcw, Keyboard } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -8,17 +8,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useBonus } from "@/contexts/BonusContext";
 import { CRITERIA, OS_TYPES } from "@/lib/constants";
-import {
-  generateId,
-  todayISO,
-  monthKeyFromDate,
-  getDifficultyById,
-  getDurationById,
-  clampInt,
-  toNum,
-} from "@/lib/database";
+import { generateId, clampInt, toNum } from "@/lib/numberHelpers";
+import { todayISO, monthKeyFromDate } from "@/lib/dateHelpers";
+import { getDifficultyById, getDurationById, calculateOSMetrics } from "@/lib/bonusCalculator";
 import { OSRecord } from "@/types/bonus";
 import { KPICard } from "./KPICard";
+import { toast } from "sonner";
 
 interface OSFormProps {
   editingOS?: OSRecord | null;
@@ -37,6 +32,7 @@ export function OSForm({ editingOS, onClearEditing }: OSFormProps) {
   const [valorOs, setValorOs] = useState("");
   const [setor, setSetor] = useState("");
   const [obs, setObs] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
   const [critValues, setCritValues] = useState<Record<string, number>>(() => {
     const initial: Record<string, number> = {};
     CRITERIA.forEach((c) => (initial[c.id] = 0));
@@ -64,7 +60,7 @@ export function OSForm({ editingOS, onClearEditing }: OSFormProps) {
     }
   }, [editingOS, setSelectedEmployeeId]);
 
-  const clearForm = () => {
+  const clearForm = useCallback(() => {
     setOsId("");
     setCliente("");
     setDate(todayISO());
@@ -78,44 +74,37 @@ export function OSForm({ editingOS, onClearEditing }: OSFormProps) {
     CRITERIA.forEach((c) => (initial[c.id] = 0));
     setCritValues(initial);
     onClearEditing?.();
-  };
+  }, [onClearEditing]);
 
   const liveCalc = useMemo(() => {
-    const score = Object.values(critValues).reduce((a, b) => a + b, 0);
-    const diff = getDifficultyById(db.cfg, dificuldadeId);
-    const dur = getDurationById(db.cfg, duracaoId);
-    const ce = diff.ce;
-    const ceFinal = ce * dur.mult;
-    const maxPts = db.cfg.maxPts || 16;
-    const q = maxPts > 0 ? score / maxPts : 0;
-    const ceQ = ceFinal * q;
-    return { score, maxPts, ceFinal, ceQ };
+    return calculateOSMetrics(critValues, db.cfg, dificuldadeId, duracaoId);
   }, [critValues, dificuldadeId, duracaoId, db.cfg]);
 
-  const handleSave = () => {
+  const validateForm = useCallback((): boolean => {
     const emp = db.employees.find((e) => e.id === selectedEmployeeId);
+    
     if (!emp) {
-      alert("Selecione um colaborador");
-      return;
+      toast.error("Selecione um colaborador");
+      return false;
     }
     if (!osId.trim()) {
-      alert("Informe o número da OS");
-      return;
+      toast.error("Informe o número da OS");
+      return false;
     }
     if (!cliente.trim()) {
-      alert("Informe o cliente");
-      return;
+      toast.error("Informe o cliente");
+      return false;
     }
+    return true;
+  }, [db.employees, selectedEmployeeId, osId, cliente]);
 
-    const diff = getDifficultyById(db.cfg, dificuldadeId);
-    const dur = getDurationById(db.cfg, duracaoId);
-    const score = Object.values(critValues).reduce((a, b) => a + b, 0);
-    const ceFinal = diff.ce * dur.mult;
-    const maxPts = db.cfg.maxPts || 16;
-    const q = maxPts > 0 ? score / maxPts : 0;
-    const ceQ = ceFinal * q;
-
+  const handleSave = useCallback(async () => {
+    if (!validateForm()) return;
+    
+    const emp = db.employees.find((e) => e.id === selectedEmployeeId)!;
+    const { score, ce, ceFinal, ceQ, dur } = liveCalc;
     const mk = monthKeyFromDate(date);
+    
     if (mk && mk !== monthKey) {
       setMonthKey(mk);
     }
@@ -138,24 +127,33 @@ export function OSForm({ editingOS, onClearEditing }: OSFormProps) {
       obs: obs.trim(),
       crit: { ...critValues },
       score,
-      ce: diff.ce,
+      ce,
       ceFinal,
       ceQ,
     };
 
-    saveOS(record);
-    clearForm();
-  };
+    setIsSaving(true);
+    try {
+      await saveOS(record);
+      clearForm();
+    } finally {
+      setIsSaving(false);
+    }
+  }, [
+    validateForm, db.employees, selectedEmployeeId, liveCalc, date, monthKey,
+    setMonthKey, editingOS, osId, cliente, tipo, dificuldadeId, duracaoId,
+    valorOs, setor, obs, critValues, saveOS, clearForm
+  ]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.ctrlKey && e.key === "Enter") {
+      if (e.ctrlKey && e.key === "Enter" && !isSaving) {
         handleSave();
       }
     };
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [handleSave]);
+  }, [handleSave, isSaving]);
 
   return (
     <motion.div
@@ -341,11 +339,20 @@ export function OSForm({ editingOS, onClearEditing }: OSFormProps) {
 
       {/* Action buttons */}
       <div className="flex gap-3 flex-wrap pt-2">
-        <Button onClick={handleSave} className="btn-primary-glow gap-2">
+        <Button 
+          onClick={handleSave} 
+          className="btn-primary-glow gap-2"
+          disabled={isSaving}
+        >
           <Save className="w-4 h-4" />
-          {editingOS ? "Atualizar OS" : "Salvar OS"}
+          {isSaving ? "Salvando..." : editingOS ? "Atualizar OS" : "Salvar OS"}
         </Button>
-        <Button variant="outline" onClick={clearForm} className="gap-2">
+        <Button 
+          variant="outline" 
+          onClick={clearForm} 
+          className="gap-2"
+          disabled={isSaving}
+        >
           <RotateCcw className="w-4 h-4" />
           Limpar
         </Button>

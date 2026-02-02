@@ -7,14 +7,19 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useBonus } from "@/contexts/BonusContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { ConfirmDeleteDialog } from "@/components/ConfirmDeleteDialog";
+import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { toast } from "sonner";
 
 export function EmployeesTab() {
-  const { db, monthKey, addEmployee, removeEmployee, setHorasTrabalhadas } = useBonus();
+  const { db, monthKey, addEmployee, removeEmployee, setHorasTrabalhadas, isLoading } = useBonus();
   const { isGestor } = useAuth();
   const [newName, setNewName] = useState("");
   const [newRole, setNewRole] = useState("");
   const [newEmail, setNewEmail] = useState("");
+  const [isAdding, setIsAdding] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const getHoras = (empId: string) => {
     return db.horasTrabalhadas[monthKey]?.[empId] || 0;
@@ -29,29 +34,31 @@ export function EmployeesTab() {
       toast.error("Informe o email do colaborador");
       return;
     }
+    
+    setIsAdding(true);
     try {
       await addEmployee(newName.trim(), newRole.trim(), newEmail.trim().toLowerCase());
       setNewName("");
       setNewRole("");
       setNewEmail("");
-      toast.success("Colaborador adicionado!");
     } catch (error: any) {
       if (error.message?.includes("duplicate key")) {
         toast.error("Já existe um colaborador com este email");
-      } else {
-        toast.error("Erro ao adicionar colaborador");
       }
+    } finally {
+      setIsAdding(false);
     }
   };
 
-  const handleDelete = async (id: string, name: string) => {
-    if (confirm(`Excluir colaborador "${name}"?`)) {
-      try {
-        await removeEmployee(id);
-        toast.success("Colaborador removido");
-      } catch {
-        toast.error("Erro ao remover colaborador");
-      }
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    
+    setIsDeleting(true);
+    try {
+      await removeEmployee(deleteTarget.id);
+    } finally {
+      setIsDeleting(false);
+      setDeleteTarget(null);
     }
   };
 
@@ -61,6 +68,10 @@ export function EmployeesTab() {
         Apenas gestores podem gerenciar colaboradores.
       </div>
     );
+  }
+
+  if (isLoading) {
+    return <LoadingSkeleton variant="list" count={5} />;
   }
 
   return (
@@ -107,9 +118,13 @@ export function EmployeesTab() {
         </div>
       </div>
 
-      <Button onClick={handleAdd} className="btn-primary-glow gap-2">
+      <Button 
+        onClick={handleAdd} 
+        className="btn-primary-glow gap-2"
+        disabled={isAdding}
+      >
         <UserPlus className="w-4 h-4" />
-        Adicionar Colaborador
+        {isAdding ? "Adicionando..." : "Adicionar Colaborador"}
       </Button>
 
       <div className="h-px bg-border" />
@@ -168,7 +183,7 @@ export function EmployeesTab() {
                     <Button
                       variant="destructive"
                       size="sm"
-                      onClick={() => handleDelete(emp.id, emp.name)}
+                      onClick={() => setDeleteTarget({ id: emp.id, name: emp.name })}
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </Button>
@@ -184,6 +199,16 @@ export function EmployeesTab() {
         <strong>Importante:</strong> O email do colaborador será usado para login. 
         Quando o colaborador se cadastrar com o mesmo email, ele terá acesso apenas às suas próprias OS.
       </p>
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDeleteDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+        onConfirm={handleConfirmDelete}
+        title={`Excluir colaborador "${deleteTarget?.name || ""}"?`}
+        description="Esta ação não pode ser desfeita. Todas as OS associadas a este colaborador serão mantidas, mas o colaborador não poderá mais acessar o sistema."
+        isLoading={isDeleting}
+      />
     </motion.div>
   );
 }

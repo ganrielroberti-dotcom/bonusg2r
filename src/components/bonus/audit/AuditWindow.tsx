@@ -3,7 +3,9 @@ import { createRoot } from "react-dom/client";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import { Database, Employee, OSRecord, BonusCamadas } from "@/types/bonus";
-import { calcBonusCamadas, getMonthOS, formatBRL } from "@/lib/database";
+import { calcBonusCamadas, getMonthOS } from "@/lib/bonusCalculator";
+import { formatBRL } from "@/lib/formatters";
+import { toast } from "sonner";
 import { AuditSummary } from "./AuditSummary";
 import { CriteriaAverageChart, DifficultyPieChart, CEQEvolutionChart, BonusLayersChart } from "./AuditCharts";
 import { AuditOSTable } from "./AuditOSTable";
@@ -95,7 +97,7 @@ function AuditContent({ db, initialMonthKey, employee }: AuditContentProps) {
       pdf.save(`auditoria_${employee.name.replace(/\s+/g, "_")}_${monthKey}.pdf`);
     } catch (error) {
       console.error("Erro ao gerar PDF:", error);
-      alert("Erro ao gerar PDF. Tente novamente.");
+      toast.error("Erro ao gerar PDF. Tente novamente.");
     } finally {
       setIsExporting(false);
     }
@@ -367,14 +369,14 @@ export function openAuditWindow(
 ): void {
   const employee = db.employees.find((e) => e.id === employeeId);
   if (!employee) {
-    alert("Colaborador não encontrado.");
+    toast.error("Colaborador não encontrado");
     return;
   }
 
   // Open new window
   const win = window.open("", "_blank", "width=1200,height=900");
   if (!win) {
-    alert("Não foi possível abrir a janela de auditoria. Verifique se pop-ups estão bloqueados.");
+    toast.error("Não foi possível abrir a janela de auditoria. Verifique se pop-ups estão bloqueados.");
     return;
   }
 

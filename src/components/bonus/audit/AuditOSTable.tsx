@@ -1,5 +1,5 @@
 import { OSRecord, Config } from "@/types/bonus";
-import { getDifficultyById, getDurationById } from "@/lib/database";
+import { getDifficultyById, getDurationById } from "@/lib/bonusCalculator";
 import {
   Table,
   TableBody,
