@@ -15,8 +15,8 @@
     --popover: 222 47% 10%;
     --popover-foreground: 210 40% 96%;
 
-    --primary: 217 91% 60%;
-    --primary-foreground: 222 47% 6%;
+    --primary: 195 100% 41%;
+    --primary-foreground: 210 40% 98%;
 
     --secondary: 215 25% 18%;
     --secondary-foreground: 210 40% 96%;
@@ -24,8 +24,8 @@
     --muted: 215 25% 20%;
     --muted-foreground: 215 20% 55%;
 
-    --accent: 217 91% 60%;
-    --accent-foreground: 222 47% 6%;
+    --accent: 195 100% 41%;
+    --accent-foreground: 210 40% 98%;
 
     --destructive: 0 72% 51%;
     --destructive-foreground: 210 40% 98%;
@@ -38,12 +38,12 @@
 
     --border: 215 25% 15%;
     --input: 215 25% 12%;
-    --ring: 217 91% 60%;
+    --ring: 195 100% 41%;
 
     --radius: 0.75rem;
 
     /* Custom gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(217 91% 60%) 0%, hsl(240 60% 55%) 100%);
+    --gradient-primary: linear-gradient(135deg, hsl(195 100% 41%) 0%, hsl(200 80% 35%) 100%);
     --gradient-card: linear-gradient(180deg, hsla(0 0% 100% / 0.03) 0%, hsla(0 0% 100% / 0.01) 100%);
     --gradient-success: linear-gradient(135deg, hsl(160 84% 39%) 0%, hsl(160 84% 30%) 100%);
     --gradient-warning: linear-gradient(135deg, hsl(45 93% 47%) 0%, hsl(35 93% 47%) 100%);
@@ -52,18 +52,18 @@
 
     /* Custom shadows */
     --shadow-card: 0 10px 30px hsla(0 0% 0% / 0.35);
-    --shadow-glow: 0 0 20px hsla(217 91% 60% / 0.15);
-    --shadow-input-focus: 0 0 0 3px hsla(217 91% 60% / 0.15);
+    --shadow-glow: 0 0 20px hsla(195 100% 41% / 0.15);
+    --shadow-input-focus: 0 0 0 3px hsla(195 100% 41% / 0.15);
 
     /* Sidebar */
     --sidebar-background: 222 47% 7%;
     --sidebar-foreground: 210 40% 90%;
-    --sidebar-primary: 217 91% 60%;
+    --sidebar-primary: 195 100% 41%;
     --sidebar-primary-foreground: 222 47% 6%;
     --sidebar-accent: 215 25% 14%;
     --sidebar-accent-foreground: 210 40% 96%;
     --sidebar-border: 215 25% 12%;
-    --sidebar-ring: 217 91% 60%;
+    --sidebar-ring: 195 100% 41%;
   }
 }
 
@@ -148,11 +148,11 @@
 
   .btn-primary-glow {
     background: var(--gradient-primary);
-    box-shadow: 0 4px 14px hsla(217 91% 60% / 0.25);
+    box-shadow: 0 4px 14px hsla(195 100% 41% / 0.25);
   }
 
   .btn-primary-glow:hover {
-    box-shadow: 0 6px 20px hsla(217 91% 60% / 0.35);
+    box-shadow: 0 6px 20px hsla(195 100% 41% / 0.35);
   }
 }
 

@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Zap } from "lucide-react";
 import { LeftPanel } from "./LeftPanel";
 import { RightPanel } from "./RightPanel";
 import { OSRecord } from "@/types/bonus";
+import logoG2R from "@/assets/logo-g2r-white.png";
 
 export function BonusApp() {
   const [editingOS, setEditingOS] = useState<OSRecord | null>(null);
@@ -26,18 +26,21 @@ export function BonusApp() {
         animate={{ opacity: 1, y: 0 }}
         className="max-w-[1500px] mx-auto px-4 sm:px-6 py-4 flex flex-wrap items-end justify-between gap-4"
       >
-        <div>
-          <h1 className="flex items-center gap-2 text-lg sm:text-xl font-black tracking-tight">
-            <Zap className="w-5 h-5 text-primary" />
-            <span>G2R</span>
-            <span className="text-muted-foreground font-normal">•</span>
-            <span className="gradient-text-primary">Bonificação</span>
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1 max-w-xl">
-            Registre OS, avalie qualidade e gere a auditoria do bônus por colaborador.
-          </p>
+        <div className="flex items-center gap-4">
+          <img 
+            src={logoG2R} 
+            alt="G2R Engenharia Elétrica" 
+            className="h-8 sm:h-10 w-auto"
+          />
+          <div className="h-6 w-px bg-border/50 hidden sm:block" />
+          <div className="hidden sm:block">
+            <span className="text-sm font-semibold text-primary">Bonificação</span>
+            <p className="text-xs text-muted-foreground">
+              Gestão de OS e bônus
+            </p>
+          </div>
         </div>
-        <div className="text-xs text-muted-foreground/70 tracking-wide">
+        <div className="text-xs text-muted-foreground/70 tracking-wide hidden sm:block">
           Dev. Gabriel Roberti
         </div>
       </motion.header>
