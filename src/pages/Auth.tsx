@@ -1,14 +1,15 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Zap, LogIn, UserPlus, Mail, Lock, User, Loader2 } from "lucide-react";
+import { LogIn, UserPlus, Mail, Lock, User, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import logoG2R from "@/assets/logo-g2r-white.png";
 import { z } from "zod";
 
 const emailSchema = z.string().email("Email inválido");
@@ -106,13 +107,13 @@ export default function Auth() {
         className="w-full max-w-md"
       >
         <div className="text-center mb-8">
-          <h1 className="flex items-center justify-center gap-2 text-2xl font-black tracking-tight">
-            <Zap className="w-6 h-6 text-primary" />
-            <span>G2R</span>
-            <span className="text-muted-foreground font-normal">•</span>
-            <span className="gradient-text-primary">Bonificação</span>
-          </h1>
-          <p className="text-sm text-muted-foreground mt-2">
+          <img 
+            src={logoG2R} 
+            alt="G2R Engenharia Elétrica" 
+            className="h-12 sm:h-14 w-auto mx-auto mb-4"
+          />
+          <p className="text-sm font-medium text-primary">Sistema de Bonificação</p>
+          <p className="text-xs text-muted-foreground mt-1">
             Acesse sua conta para gerenciar bonificações
           </p>
         </div>
