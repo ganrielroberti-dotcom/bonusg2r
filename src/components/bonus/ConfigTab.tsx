@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Settings, Clock, Gauge, Shield } from "lucide-react";
+import { Settings, Clock, Gauge, Shield, History } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useBonus } from "@/contexts/BonusContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -7,6 +7,7 @@ import { GeneralConfig } from "./config/GeneralConfig";
 import { DifficultyConfig } from "./config/DifficultyConfig";
 import { DurationConfig } from "./config/DurationConfig";
 import { GestorEmailsConfig } from "./config/GestorEmailsConfig";
+import { AuditLogViewer } from "./audit/AuditLogViewer";
 import { DifficultyWeight, DurationWeight } from "@/types/bonus";
 
 export function ConfigTab() {
@@ -36,7 +37,7 @@ export function ConfigTab() {
       className="space-y-4"
     >
       <Tabs defaultValue="general" className="w-full">
-        <TabsList className="grid w-full grid-cols-4 h-auto">
+        <TabsList className="grid w-full grid-cols-5 h-auto">
           <TabsTrigger value="general" className="flex items-center gap-1.5 text-xs py-2">
             <Settings className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Geral</span>
@@ -52,6 +53,10 @@ export function ConfigTab() {
           <TabsTrigger value="access" className="flex items-center gap-1.5 text-xs py-2">
             <Shield className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Acesso</span>
+          </TabsTrigger>
+          <TabsTrigger value="audit" className="flex items-center gap-1.5 text-xs py-2">
+            <History className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Auditoria</span>
           </TabsTrigger>
         </TabsList>
 
@@ -78,6 +83,10 @@ export function ConfigTab() {
 
         <TabsContent value="access" className="mt-4">
           <GestorEmailsConfig />
+        </TabsContent>
+
+        <TabsContent value="audit" className="mt-4">
+          <AuditLogViewer />
         </TabsContent>
       </Tabs>
     </motion.div>
