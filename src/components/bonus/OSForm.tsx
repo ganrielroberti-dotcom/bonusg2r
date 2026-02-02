@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DatePicker } from "@/components/ui/date-picker";
 import { useBonus } from "@/contexts/BonusContext";
 import { CRITERIA, OS_TYPES } from "@/lib/constants";
 import { generateId, clampInt, toNum } from "@/lib/numberHelpers";
@@ -192,13 +193,10 @@ export function OSForm({ editingOS, onClearEditing }: OSFormProps) {
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="space-y-1.5">
-          <Label htmlFor="date">Data</Label>
-          <Input
-            id="date"
-            type="date"
+          <Label>Data</Label>
+          <DatePicker
             value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className="input-focus-ring"
+            onChange={setDate}
           />
         </div>
         <div className="space-y-1.5">
