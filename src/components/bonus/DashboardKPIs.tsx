@@ -4,6 +4,7 @@ import { FileSpreadsheet, Download, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useBonus } from "@/contexts/BonusContext";
 import { KPICard } from "./KPICard";
+import { openAuditWindow } from "./audit";
 import {
   formatBRL,
   getMonthOS,
@@ -16,7 +17,7 @@ import {
 import { CRITERIA } from "@/lib/constants";
 
 export function DashboardKPIs() {
-  const { db, monthKey } = useBonus();
+  const { db, monthKey, selectedEmployeeId } = useBonus();
 
   const stats = useMemo(() => {
     const os = getMonthOS(db, monthKey);
@@ -93,8 +94,11 @@ export function DashboardKPIs() {
   };
 
   const handleAudit = () => {
-    // TODO: Implement full audit window
-    alert("Funcionalidade de auditoria completa será implementada em breve!");
+    if (!selectedEmployeeId) {
+      alert("Selecione um colaborador para gerar a auditoria.");
+      return;
+    }
+    openAuditWindow(db, monthKey, selectedEmployeeId);
   };
 
   return (
