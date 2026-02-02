@@ -12,11 +12,12 @@ export const CRITERIA: Criterion[] = [
   { id: "c_ferramentas", title: "Organização de ferramentas", desc: "Nenhuma perda + maleta organizada", max: 2 },
   { id: "c_materiais", title: "Controle de materiais", desc: "Caixa identificada + organizada", max: 2 },
   { id: "c_comunicacao", title: "Comunicação Clara", desc: "Clareza na comunicação com cliente e equipe", max: 2 },
+  { id: "c_capricho", title: "Capricho no serviço", desc: "Qualidade visual e acabamento verificados via fotos/visita", max: 2 },
 ];
 
 export const DEFAULT_CONFIG: Config = {
   bonusCap: 600,
-  maxPts: 16,
+  maxPts: 18,
   horasEsperadas: 220,
   layerWeights: {
     esforco: 0.50,

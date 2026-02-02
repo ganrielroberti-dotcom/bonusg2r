@@ -45,8 +45,9 @@ const createMockOS = (overrides?: Partial<OSRecord>): OSRecord => ({
     c_ferramentas: 2,
     c_materiais: 2,
     c_comunicacao: 2,
+    c_capricho: 2,
   },
-  score: 16,
+  score: 18,
   ce: 1.0,
   ceFinal: 1.0,
   ceQ: 1.0,
@@ -117,7 +118,7 @@ describe("Bonus Calculator - calculateMaxPts", () => {
     const maxPts = calculateMaxPts();
     const expected = CRITERIA.reduce((sum, c) => sum + c.max, 0);
     expect(maxPts).toBe(expected);
-    expect(maxPts).toBe(16); // Based on current CRITERIA
+    expect(maxPts).toBe(18); // Based on current CRITERIA (includes c_capricho)
   });
 });
 
@@ -334,15 +335,16 @@ describe("Bonus Calculator - calculateOSMetrics", () => {
       c_ferramentas: 2,
       c_materiais: 2,
       c_comunicacao: 2,
+      c_capricho: 2,
     };
 
     const result = calculateOSMetrics(critValues, cfg, "media", "1d");
 
-    expect(result.score).toBe(16);
-    expect(result.maxPts).toBe(16);
+    expect(result.score).toBe(18);
+    expect(result.maxPts).toBe(18);
     expect(result.ce).toBe(1.0); // media difficulty
     expect(result.ceFinal).toBe(1.0); // 1.0 * 1.0
-    expect(result.ceQ).toBe(1.0); // 1.0 * (16/16)
+    expect(result.ceQ).toBe(1.0); // 1.0 * (18/18)
   });
 
   it("should apply difficulty multiplier correctly", () => {
@@ -371,13 +373,13 @@ describe("Bonus Calculator - calculateOSMetrics", () => {
     const cfg = createMockConfig();
     
     const halfScore = calculateOSMetrics(
-      { c_desc: 1, c_fotos: 1, c_desloc: 1, c_pausa: 1, c_retrabalho: 1, c_prazo: 1, c_ferramentas: 1, c_materiais: 1 },
+      { c_desc: 1, c_fotos: 1, c_desloc: 1, c_pausa: 1, c_retrabalho: 1, c_prazo: 1, c_ferramentas: 1, c_materiais: 1, c_capricho: 1 },
       cfg,
       "media",
       "1d"
     );
     const fullScore = calculateOSMetrics(
-      { c_desc: 2, c_fotos: 2, c_desloc: 1, c_pausa: 1, c_retrabalho: 2, c_prazo: 2, c_ferramentas: 2, c_materiais: 2, c_comunicacao: 2 },
+      { c_desc: 2, c_fotos: 2, c_desloc: 1, c_pausa: 1, c_retrabalho: 2, c_prazo: 2, c_ferramentas: 2, c_materiais: 2, c_comunicacao: 2, c_capricho: 2 },
       cfg,
       "media",
       "1d"
