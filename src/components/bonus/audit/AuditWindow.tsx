@@ -16,7 +16,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { 
-  Printer, 
   Download, 
   FileText, 
   BarChart3, 
@@ -55,6 +54,7 @@ function AuditContent({ db, initialMonthKey, employee }: AuditContentProps) {
   const [isExporting, setIsExporting] = useState(false);
   const [activeTab, setActiveTab] = useState("charts");
   const contentRef = useRef<HTMLDivElement>(null);
+  const portalContainerRef = useRef<HTMLDivElement>(null);
   const monthOptions = generateMonthOptions();
 
   // Recalculate data based on selected month
@@ -62,9 +62,6 @@ function AuditContent({ db, initialMonthKey, employee }: AuditContentProps) {
   const osList = allMonthOS.filter((os) => os.employeeId === employee.id);
   const camadas = calcBonusCamadas(db.cfg, db, monthKey, employee.id, osList);
 
-  const handlePrint = () => {
-    window.print();
-  };
 
   const handleDownloadPDF = async () => {
     if (!contentRef.current) return;
@@ -251,6 +248,9 @@ function AuditContent({ db, initialMonthKey, employee }: AuditContentProps) {
 
   return (
     <div ref={contentRef} className="min-h-screen bg-background text-foreground">
+      {/* Portal container for dropdowns in popup window */}
+      <div ref={portalContainerRef} />
+      
       {/* Premium Header */}
       <header className="sticky top-0 z-50 no-print">
         <div className="absolute inset-0 bg-background/60 backdrop-blur-xl border-b border-border/30" />
@@ -285,7 +285,7 @@ function AuditContent({ db, initialMonthKey, employee }: AuditContentProps) {
                   <SelectTrigger className="w-[140px] sm:w-[160px] h-8 text-xs sm:text-sm bg-transparent border-0 p-0 focus:ring-0">
                     <SelectValue placeholder="Selecione" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent container={portalContainerRef.current}>
                     {monthOptions.map((opt) => (
                       <SelectItem key={opt.value} value={opt.value}>
                         {opt.label}
@@ -308,10 +308,6 @@ function AuditContent({ db, initialMonthKey, employee }: AuditContentProps) {
                     <FileText className="w-3.5 h-3.5" />
                   )}
                   <span className="hidden sm:inline">PDF</span>
-                </Button>
-                <Button variant="outline" size="sm" onClick={handlePrint} className="h-8 gap-1.5 text-xs">
-                  <Printer className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Imprimir</span>
                 </Button>
                 <Button variant="outline" size="sm" onClick={handleDownloadHTML} className="h-8 gap-1.5 text-xs">
                   <Download className="w-3.5 h-3.5" />
