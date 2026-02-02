@@ -9,67 +9,95 @@ interface HoursInputProps {
 
 /**
  * Debounced hours input - only saves to database after user stops typing
+ * Uses local state to prevent screen updates during input
  */
 export function HoursInput({ employeeId, initialHours, onSave }: HoursInputProps) {
   const [localValue, setLocalValue] = useState<string>(initialHours ? String(initialHours) : "");
   const [isSaving, setIsSaving] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastSavedValue = useRef<number>(initialHours);
+  const isUserTyping = useRef<boolean>(false);
+  const mountedRef = useRef<boolean>(true);
 
-  // Sync with external changes only if significantly different
+  // Track when component mounts/unmounts
   useEffect(() => {
-    if (initialHours !== lastSavedValue.current) {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  // Only sync with external changes if:
+  // 1. User is NOT currently typing
+  // 2. The value is actually different from what we last saved
+  useEffect(() => {
+    if (!isUserTyping.current && initialHours !== lastSavedValue.current) {
       setLocalValue(initialHours ? String(initialHours) : "");
       lastSavedValue.current = initialHours;
     }
   }, [initialHours]);
 
-  const debouncedSave = useCallback(
-    (value: number) => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
+  const saveValue = useCallback(async (value: number) => {
+    if (!mountedRef.current) return;
+    
+    setIsSaving(true);
+    isUserTyping.current = false;
+    
+    try {
+      await onSave(employeeId, value);
+      lastSavedValue.current = value;
+    } catch (error) {
+      // If save fails, revert to last saved value
+      if (mountedRef.current) {
+        setLocalValue(lastSavedValue.current ? String(lastSavedValue.current) : "");
       }
-
-      timeoutRef.current = setTimeout(async () => {
-        if (value !== lastSavedValue.current) {
-          setIsSaving(true);
-          try {
-            await onSave(employeeId, value);
-            lastSavedValue.current = value;
-          } finally {
-            setIsSaving(false);
-          }
-        }
-      }, 800); // Wait 800ms after user stops typing
-    },
-    [employeeId, onSave]
-  );
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newValue = e.target.value;
-    setLocalValue(newValue);
-    
-    const numValue = Number(newValue) || 0;
-    debouncedSave(numValue);
-  };
-
-  const handleBlur = useCallback(async () => {
-    // Save immediately on blur
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-    }
-    
-    const numValue = Number(localValue) || 0;
-    if (numValue !== lastSavedValue.current) {
-      setIsSaving(true);
-      try {
-        await onSave(employeeId, numValue);
-        lastSavedValue.current = numValue;
-      } finally {
+    } finally {
+      if (mountedRef.current) {
         setIsSaving(false);
       }
     }
-  }, [employeeId, localValue, onSave]);
+  }, [employeeId, onSave]);
+
+  const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = e.target.value;
+    setLocalValue(newValue);
+    isUserTyping.current = true;
+    
+    // Clear any existing timeout
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+
+    const numValue = Number(newValue) || 0;
+    
+    // Only save if value is different from last saved
+    if (numValue !== lastSavedValue.current) {
+      timeoutRef.current = setTimeout(() => {
+        saveValue(numValue);
+      }, 1000); // Wait 1 second after user stops typing
+    }
+  }, [saveValue]);
+
+  const handleBlur = useCallback(() => {
+    // Clear any pending timeout
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+    
+    const numValue = Number(localValue) || 0;
+    
+    // Save immediately on blur if value changed
+    if (numValue !== lastSavedValue.current) {
+      saveValue(numValue);
+    } else {
+      isUserTyping.current = false;
+    }
+  }, [localValue, saveValue]);
+
+  const handleFocus = useCallback(() => {
+    isUserTyping.current = true;
+  }, []);
 
   // Cleanup timeout on unmount
   useEffect(() => {
@@ -88,9 +116,9 @@ export function HoursInput({ employeeId, initialHours, onSave }: HoursInputProps
       value={localValue}
       onChange={handleChange}
       onBlur={handleBlur}
+      onFocus={handleFocus}
       placeholder="0"
       className={`w-20 input-focus-ring ${isSaving ? "opacity-70" : ""}`}
-      disabled={isSaving}
     />
   );
 }
