@@ -233,7 +233,7 @@ describe("Bonus Calculator - calcBonusCamadas", () => {
     const os = [
       createMockOS({
         employeeId: "emp-1",
-        score: 16,
+        score: 18, // Updated to new max
         ceFinal: 20,
         ceQ: 20,
         crit: { c_prazo: 2 }, // Prazo cumprido
@@ -253,7 +253,7 @@ describe("Bonus Calculator - calcBonusCamadas", () => {
   });
 
   it("should apply hours factor correctly", () => {
-    const os = [createMockOS({ employeeId: "emp-1", score: 16 })];
+    const os = [createMockOS({ employeeId: "emp-1", score: 18 })];
     
     const db110 = createMockDatabase(os, {
       "2026-02": { "emp-1": 110 }, // Half hours
@@ -283,7 +283,7 @@ describe("Bonus Calculator - calcBonusCamadas", () => {
   });
 
   it("should return zero bonus for zero hours", () => {
-    const os = [createMockOS({ employeeId: "emp-1", score: 16 })];
+    const os = [createMockOS({ employeeId: "emp-1", score: 18 })];
     const db = createMockDatabase(os, {
       "2026-02": { "emp-1": 0 },
     });
@@ -296,8 +296,8 @@ describe("Bonus Calculator - calcBonusCamadas", () => {
 
   it("should calculate quality factor based on average score", () => {
     const os = [
-      createMockOS({ id: "os-1", employeeId: "emp-1", score: 8 }),
-      createMockOS({ id: "os-2", employeeId: "emp-1", score: 16 }),
+      createMockOS({ id: "os-1", employeeId: "emp-1", score: 9 }),
+      createMockOS({ id: "os-2", employeeId: "emp-1", score: 18 }),
     ];
     const db = createMockDatabase(os, {
       "2026-02": { "emp-1": 220 },
@@ -305,12 +305,12 @@ describe("Bonus Calculator - calcBonusCamadas", () => {
     const cfg = createMockConfig();
 
     const result = calcBonusCamadas(cfg, db, "2026-02", "emp-1", os);
-    expect(result.mediaPontuacao).toBe(12); // (8 + 16) / 2
-    expect(result.fatorQualidade).toBe(0.75); // 12 / 16
+    expect(result.mediaPontuacao).toBe(13.5); // (9 + 18) / 2
+    expect(result.fatorQualidade).toBe(0.75); // 13.5 / 18
   });
 
   it("should respect bonus cap", () => {
-    const os = [createMockOS({ employeeId: "emp-1", score: 16, crit: { c_prazo: 2 } })];
+    const os = [createMockOS({ employeeId: "emp-1", score: 18, crit: { c_prazo: 2 } })];
     const db = createMockDatabase(os, {
       "2026-02": { "emp-1": 220 },
     });
@@ -394,7 +394,7 @@ describe("Bonus Calculator - Layer Weights", () => {
     const os = [
       createMockOS({
         employeeId: "emp-1",
-        score: 16,
+        score: 18, // Updated to new max
         crit: { c_prazo: 2 },
       }),
     ];
