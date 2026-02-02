@@ -13,7 +13,7 @@ import { AuditOSTable } from "./AuditOSTable";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
 import { Badge } from "@/components/ui/badge";
 import { 
   Download, 
@@ -54,7 +54,7 @@ function AuditContent({ db, initialMonthKey, employee }: AuditContentProps) {
   const [isExporting, setIsExporting] = useState(false);
   const [activeTab, setActiveTab] = useState("charts");
   const contentRef = useRef<HTMLDivElement>(null);
-  const portalContainerRef = useRef<HTMLDivElement>(null);
+  const pdfContentRef = useRef<HTMLDivElement>(null);
   const monthOptions = generateMonthOptions();
 
   // Recalculate data based on selected month
@@ -62,26 +62,26 @@ function AuditContent({ db, initialMonthKey, employee }: AuditContentProps) {
   const osList = allMonthOS.filter((os) => os.employeeId === employee.id);
   const camadas = calcBonusCamadas(db.cfg, db, monthKey, employee.id, osList);
 
+  const qualityPercent = camadas.ceTotal > 0 
+    ? (camadas.ceQTotal / camadas.ceTotal) * 100 
+    : 0;
+  
+  const bonusPercentOfCap = camadas.teto > 0 
+    ? (camadas.bonusTotal / camadas.teto) * 100 
+    : 0;
 
   const handleDownloadPDF = async () => {
-    if (!contentRef.current) return;
+    if (!pdfContentRef.current) return;
     
     setIsExporting(true);
     
     try {
-      const buttons = contentRef.current.querySelectorAll('.no-print');
-      buttons.forEach(btn => (btn as HTMLElement).style.display = 'none');
-      
-      const canvas = await html2canvas(contentRef.current, {
+      const canvas = await html2canvas(pdfContentRef.current, {
         scale: 2,
         useCORS: true,
         logging: false,
-        backgroundColor: '#0a0a0f',
-        windowWidth: contentRef.current.scrollWidth,
-        windowHeight: contentRef.current.scrollHeight,
+        backgroundColor: '#ffffff',
       });
-      
-      buttons.forEach(btn => (btn as HTMLElement).style.display = '');
       
       const imgData = canvas.toDataURL("image/png");
       const pdf = new jsPDF("p", "mm", "a4");
@@ -244,12 +244,152 @@ function AuditContent({ db, initialMonthKey, employee }: AuditContentProps) {
     }
   };
 
-  const bonusPercentOfCap = camadas.teto > 0 ? (camadas.bonusTotal / camadas.teto) * 100 : 0;
+  
 
   return (
     <div ref={contentRef} className="min-h-screen bg-background text-foreground">
-      {/* Portal container for dropdowns in popup window */}
-      <div ref={portalContainerRef} />
+      {/* Hidden PDF Content - Optimized for A4 */}
+      <div 
+        ref={pdfContentRef} 
+        className="fixed -left-[9999px] top-0 w-[800px] bg-white text-gray-900 p-8"
+        style={{ fontFamily: 'Arial, sans-serif' }}
+      >
+        {/* PDF Header */}
+        <div className="border-b-2 border-gray-300 pb-4 mb-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">G2R • Auditoria de Bônus</h1>
+              <p className="text-sm text-gray-600 mt-1">Relatório detalhado de bonificação</p>
+            </div>
+            <div className="text-right">
+              <p className="text-sm text-gray-600">Período: <strong>{monthKey}</strong></p>
+              <p className="text-xs text-gray-500">Gerado em: {new Date().toLocaleDateString("pt-BR")}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Employee Info */}
+        <div className="bg-gray-100 rounded-lg p-4 mb-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-full bg-blue-600 flex items-center justify-center text-white text-xl font-bold">
+                {employee.name.charAt(0)}
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-gray-900">{employee.name}</h2>
+                <p className="text-sm text-gray-600">{employee.role}</p>
+              </div>
+            </div>
+            <div className="text-right">
+              <p className="text-sm text-gray-600">Bônus Total</p>
+              <p className="text-3xl font-bold text-blue-600">{formatBRL(camadas.bonusTotal)}</p>
+              <p className="text-xs text-gray-500">{bonusPercentOfCap.toFixed(0)}% do teto ({formatBRL(camadas.teto)})</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Metrics Grid */}
+        <div className="grid grid-cols-4 gap-4 mb-6">
+          <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-center">
+            <p className="text-2xl font-bold text-gray-900">{camadas.qtdOS}</p>
+            <p className="text-xs text-gray-600">Total OS</p>
+          </div>
+          <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-center">
+            <p className="text-2xl font-bold text-green-600">{camadas.ceTotal.toFixed(2)}</p>
+            <p className="text-xs text-gray-600">CE Total</p>
+          </div>
+          <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-center">
+            <p className="text-2xl font-bold text-orange-600">{camadas.ceQTotal.toFixed(2)}</p>
+            <p className="text-xs text-gray-600">CE Qualidade</p>
+          </div>
+          <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-center">
+            <p className="text-2xl font-bold text-blue-600">{qualityPercent.toFixed(0)}%</p>
+            <p className="text-xs text-gray-600">Taxa Qualidade</p>
+          </div>
+        </div>
+
+        {/* Bonus Layers */}
+        <div className="border border-gray-200 rounded-lg overflow-hidden mb-6">
+          <div className="bg-gray-100 px-4 py-2 border-b border-gray-200">
+            <h3 className="font-semibold text-gray-900">Detalhamento por Camadas</h3>
+          </div>
+          <div className="divide-y divide-gray-200">
+            <div className="flex items-center justify-between p-4">
+              <div>
+                <span className="font-medium text-green-700">Camada 1: Esforço (50%)</span>
+                <p className="text-xs text-gray-600">{camadas.osDentroPrazo}/{camadas.qtdOS} OS no prazo • Fator: {(camadas.fatorEsforco * 100).toFixed(0)}%</p>
+              </div>
+              <span className="font-bold text-lg">{formatBRL(camadas.bonusEsforco)}</span>
+            </div>
+            <div className="flex items-center justify-between p-4">
+              <div>
+                <span className="font-medium text-blue-700">Camada 2: Qualidade (40%)</span>
+                <p className="text-xs text-gray-600">Média: {camadas.mediaPontuacao.toFixed(1)} / {db.cfg.maxPts} pts • Fator: {(camadas.fatorQualidade * 100).toFixed(0)}%</p>
+              </div>
+              <span className="font-bold text-lg">{formatBRL(camadas.bonusQualidade)}</span>
+            </div>
+            <div className="flex items-center justify-between p-4">
+              <div>
+                <span className="font-medium text-orange-700">Camada 3: Superação (10%)</span>
+                <p className="text-xs text-gray-600">CEQ: {camadas.ceQTotal.toFixed(2)} | Média equipe: {camadas.mediaEquipeCEQ.toFixed(2)} • Fator: {(camadas.fatorSuperacao * 100).toFixed(0)}%</p>
+              </div>
+              <span className="font-bold text-lg">{formatBRL(camadas.bonusSuperacao)}</span>
+            </div>
+          </div>
+          <div className="bg-gray-100 px-4 py-3 border-t border-gray-200">
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-600">Bônus Camadas × Fator Horas ({camadas.horasTrabalhadas}h/{camadas.horasEsperadas}h = {(camadas.fatorHoras * 100).toFixed(0)}%)</span>
+              <span className="font-bold text-xl text-blue-600">{formatBRL(camadas.bonusTotal)}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* OS List Summary */}
+        {osList.length > 0 && (
+          <div className="border border-gray-200 rounded-lg overflow-hidden">
+            <div className="bg-gray-100 px-4 py-2 border-b border-gray-200">
+              <h3 className="font-semibold text-gray-900">Ordens de Serviço ({osList.length})</h3>
+            </div>
+            <table className="w-full text-xs">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-3 py-2 text-left font-medium text-gray-700">OS</th>
+                  <th className="px-3 py-2 text-left font-medium text-gray-700">Cliente</th>
+                  <th className="px-3 py-2 text-left font-medium text-gray-700">Data</th>
+                  <th className="px-3 py-2 text-right font-medium text-gray-700">CE</th>
+                  <th className="px-3 py-2 text-right font-medium text-gray-700">CEQ</th>
+                  <th className="px-3 py-2 text-right font-medium text-gray-700">Score</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {osList.slice(0, 20).map((os) => (
+                  <tr key={os.id}>
+                    <td className="px-3 py-1.5 font-mono">{os.osId}</td>
+                    <td className="px-3 py-1.5">{os.cliente}</td>
+                    <td className="px-3 py-1.5">{os.date}</td>
+                    <td className="px-3 py-1.5 text-right">{os.ceFinal.toFixed(2)}</td>
+                    <td className="px-3 py-1.5 text-right">{os.ceQ.toFixed(2)}</td>
+                    <td className="px-3 py-1.5 text-right">{os.score}</td>
+                  </tr>
+                ))}
+                {osList.length > 20 && (
+                  <tr>
+                    <td colSpan={6} className="px-3 py-2 text-center text-gray-500 italic">
+                      ... e mais {osList.length - 20} registros
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Footer */}
+        <div className="mt-8 pt-4 border-t border-gray-300 text-center text-xs text-gray-500">
+          <p>Documento gerado automaticamente pelo Sistema de Bônus G2R</p>
+          <p>Este relatório é válido como comprovante de auditoria</p>
+        </div>
+      </div>
       
       {/* Premium Header */}
       <header className="sticky top-0 z-50 no-print">
@@ -281,18 +421,17 @@ function AuditContent({ db, initialMonthKey, employee }: AuditContentProps) {
             <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-secondary/50 border border-border/30">
                 <Calendar className="w-4 h-4 text-primary" />
-                <Select value={monthKey} onValueChange={setMonthKey}>
-                  <SelectTrigger className="w-[140px] sm:w-[160px] h-8 text-xs sm:text-sm bg-transparent border-0 p-0 focus:ring-0">
-                    <SelectValue placeholder="Selecione" />
-                  </SelectTrigger>
-                  <SelectContent container={portalContainerRef.current}>
-                    {monthOptions.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <select 
+                  value={monthKey} 
+                  onChange={(e) => setMonthKey(e.target.value)}
+                  className="w-[140px] sm:w-[160px] h-8 text-xs sm:text-sm bg-transparent border-0 outline-none cursor-pointer text-foreground"
+                >
+                  {monthOptions.map((opt) => (
+                    <option key={opt.value} value={opt.value} className="bg-popover text-popover-foreground">
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
               </div>
               
               <div className="flex gap-1.5 sm:gap-2">
