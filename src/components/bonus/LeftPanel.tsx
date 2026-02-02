@@ -1,10 +1,12 @@
-import { useState } from "react";
 import { motion } from "framer-motion";
-import { Calendar, User } from "lucide-react";
+import { Calendar, User, LogOut } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useBonus } from "@/contexts/BonusContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { TabsNavigation } from "./TabsNavigation";
 import { OSForm } from "./OSForm";
 import { EmployeesTab } from "./EmployeesTab";
@@ -27,6 +29,12 @@ export function LeftPanel({ editingOS, onClearEditing }: LeftPanelProps) {
     setActiveTab,
   } = useBonus();
 
+  const { user, role, isGestor, signOut } = useAuth();
+
+  const handleLogout = async () => {
+    await signOut();
+  };
+
   return (
     <motion.section
       initial={{ opacity: 0, x: -20 }}
@@ -34,12 +42,30 @@ export function LeftPanel({ editingOS, onClearEditing }: LeftPanelProps) {
       transition={{ duration: 0.4 }}
       className="glass-card rounded-xl p-4 space-y-4"
     >
-      {/* Top bar with tabs */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <TabsNavigation activeTab={activeTab} onTabChange={setActiveTab} />
+      {/* User info */}
+      <div className="flex items-center justify-between gap-3 pb-2 border-b border-border/50">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-sm">
+            {user?.email?.charAt(0).toUpperCase()}
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-medium truncate">{user?.email}</p>
+            <Badge variant={isGestor ? "default" : "secondary"} className="text-xs">
+              {role === "gestor" ? "Gestor" : role === "colaborador" ? "Colaborador" : "Sem papel"}
+            </Badge>
+          </div>
+        </div>
+        <Button variant="ghost" size="icon" onClick={handleLogout} title="Sair">
+          <LogOut className="w-4 h-4" />
+        </Button>
       </div>
 
-      {/* Month and Employee selectors (always visible) */}
+      {/* Top bar with tabs - only show full tabs for gestor */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <TabsNavigation activeTab={activeTab} onTabChange={setActiveTab} isGestor={isGestor} />
+      </div>
+
+      {/* Month and Employee selectors */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="space-y-1.5">
           <Label className="flex items-center gap-1.5">
@@ -53,31 +79,38 @@ export function LeftPanel({ editingOS, onClearEditing }: LeftPanelProps) {
             className="input-focus-ring"
           />
         </div>
-        <div className="space-y-1.5">
-          <Label className="flex items-center gap-1.5">
-            <User className="w-3.5 h-3.5" />
-            Colaborador
-          </Label>
-          <Select value={selectedEmployeeId} onValueChange={setSelectedEmployeeId}>
-            <SelectTrigger className="input-focus-ring">
-              <SelectValue placeholder="Selecione..." />
-            </SelectTrigger>
-            <SelectContent>
-              {db.employees.map((emp) => (
-                <SelectItem key={emp.id} value={emp.id}>
-                  {emp.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        {isGestor && (
+          <div className="space-y-1.5">
+            <Label className="flex items-center gap-1.5">
+              <User className="w-3.5 h-3.5" />
+              Colaborador
+            </Label>
+            <Select value={selectedEmployeeId} onValueChange={setSelectedEmployeeId}>
+              <SelectTrigger className="input-focus-ring">
+                <SelectValue placeholder="Selecione..." />
+              </SelectTrigger>
+              <SelectContent>
+                {db.employees.map((emp) => (
+                  <SelectItem key={emp.id} value={emp.id}>
+                    {emp.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
       </div>
 
       <div className="h-px bg-border" />
 
       {/* Tab content */}
-      {activeTab === "os" && (
+      {activeTab === "os" && isGestor && (
         <OSForm editingOS={editingOS} onClearEditing={onClearEditing} />
+      )}
+      {activeTab === "os" && !isGestor && (
+        <div className="text-center py-8 text-muted-foreground">
+          Visualização de OS apenas. Use a área à direita para ver suas OS.
+        </div>
       )}
       {activeTab === "colaboradores" && <EmployeesTab />}
       {activeTab === "config" && <ConfigTab />}

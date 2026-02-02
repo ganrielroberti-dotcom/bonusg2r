@@ -1,4 +1,4 @@
-import { FileSpreadsheet, Users, Settings, ClipboardList } from "lucide-react";
+import { Users, Settings, ClipboardList } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TabType } from "@/types/bonus";
 import { motion } from "framer-motion";
@@ -42,9 +42,10 @@ function TabButton({ tab, activeTab, onClick, icon, label }: TabButtonProps) {
 interface TabsNavigationProps {
   activeTab: TabType;
   onTabChange: (tab: TabType) => void;
+  isGestor?: boolean;
 }
 
-export function TabsNavigation({ activeTab, onTabChange }: TabsNavigationProps) {
+export function TabsNavigation({ activeTab, onTabChange, isGestor = true }: TabsNavigationProps) {
   return (
     <div className="flex gap-2 flex-wrap">
       <TabButton
@@ -52,22 +53,26 @@ export function TabsNavigation({ activeTab, onTabChange }: TabsNavigationProps) 
         activeTab={activeTab}
         onClick={onTabChange}
         icon={<ClipboardList className="w-4 h-4" />}
-        label="OS"
+        label={isGestor ? "Lançar OS" : "Minhas OS"}
       />
-      <TabButton
-        tab="colaboradores"
-        activeTab={activeTab}
-        onClick={onTabChange}
-        icon={<Users className="w-4 h-4" />}
-        label="Colaboradores"
-      />
-      <TabButton
-        tab="config"
-        activeTab={activeTab}
-        onClick={onTabChange}
-        icon={<Settings className="w-4 h-4" />}
-        label="Config"
-      />
+      {isGestor && (
+        <>
+          <TabButton
+            tab="colaboradores"
+            activeTab={activeTab}
+            onClick={onTabChange}
+            icon={<Users className="w-4 h-4" />}
+            label="Colaboradores"
+          />
+          <TabButton
+            tab="config"
+            activeTab={activeTab}
+            onClick={onTabChange}
+            icon={<Settings className="w-4 h-4" />}
+            label="Config"
+          />
+        </>
+      )}
     </div>
   );
 }
