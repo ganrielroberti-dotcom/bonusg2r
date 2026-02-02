@@ -151,14 +151,25 @@ function AuditContent({ db, initialMonthKey, employee }: AuditContentProps) {
       
       const blob = new Blob([html], { type: "text/html;charset=utf-8" });
       const url = URL.createObjectURL(blob);
+      
+      // Open the HTML in a new tab for viewing
+      const newWindow = window.open(url, "_blank");
+      
+      // Also offer download
       const a = document.createElement("a");
       a.href = url;
       a.download = `auditoria_${employee.name.replace(/\s+/g, "_")}_${monthKey}.html`;
       a.click();
-      URL.revokeObjectURL(url);
-      toast.success("HTML exportado com sucesso!");
+      
+      // Clean up after a short delay to allow the new window to load
+      setTimeout(() => {
+        URL.revokeObjectURL(url);
+      }, 5000);
+      
+      toast.success("HTML exportado e aberto em nova aba!");
     } catch (error) {
       console.error("Erro ao exportar HTML:", error);
+      toast.error("Erro ao exportar HTML. Tente novamente.");
     } finally {
       setIsExporting(false);
     }
