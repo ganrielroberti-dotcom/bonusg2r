@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
+import { motion, AnimatePresence } from "framer-motion";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import { Database, Employee, OSRecord, BonusCamadas } from "@/types/bonus";
@@ -13,7 +14,21 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Printer, Download, FileText, BarChart3, Table, FileSpreadsheet, Calendar, Loader2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { 
+  Printer, 
+  Download, 
+  FileText, 
+  BarChart3, 
+  Table, 
+  FileSpreadsheet, 
+  Calendar, 
+  Loader2,
+  Sparkles,
+  Shield,
+  TrendingUp,
+  Award
+} from "lucide-react";
 
 interface AuditContentProps {
   db: Database;
@@ -38,6 +53,7 @@ function generateMonthOptions(): { value: string; label: string }[] {
 function AuditContent({ db, initialMonthKey, employee }: AuditContentProps) {
   const [monthKey, setMonthKey] = useState(initialMonthKey);
   const [isExporting, setIsExporting] = useState(false);
+  const [activeTab, setActiveTab] = useState("charts");
   const contentRef = useRef<HTMLDivElement>(null);
   const monthOptions = generateMonthOptions();
 
@@ -56,7 +72,6 @@ function AuditContent({ db, initialMonthKey, employee }: AuditContentProps) {
     setIsExporting(true);
     
     try {
-      // Hide buttons during capture
       const buttons = contentRef.current.querySelectorAll('.no-print');
       buttons.forEach(btn => (btn as HTMLElement).style.display = 'none');
       
@@ -69,7 +84,6 @@ function AuditContent({ db, initialMonthKey, employee }: AuditContentProps) {
         windowHeight: contentRef.current.scrollHeight,
       });
       
-      // Restore buttons
       buttons.forEach(btn => (btn as HTMLElement).style.display = '');
       
       const imgData = canvas.toDataURL("image/png");
@@ -82,11 +96,9 @@ function AuditContent({ db, initialMonthKey, employee }: AuditContentProps) {
       let position = 10;
       let heightLeft = pdfHeight;
       
-      // First page
       pdf.addImage(imgData, "PNG", 10, position, pdfWidth, pdfHeight);
       heightLeft -= pageHeight;
       
-      // Additional pages if needed
       while (heightLeft > 0) {
         position = position - pageHeight;
         pdf.addPage();
@@ -95,6 +107,7 @@ function AuditContent({ db, initialMonthKey, employee }: AuditContentProps) {
       }
       
       pdf.save(`auditoria_${employee.name.replace(/\s+/g, "_")}_${monthKey}.pdf`);
+      toast.success("PDF exportado com sucesso!");
     } catch (error) {
       console.error("Erro ao gerar PDF:", error);
       toast.error("Erro ao gerar PDF. Tente novamente.");
@@ -109,13 +122,9 @@ function AuditContent({ db, initialMonthKey, employee }: AuditContentProps) {
     setIsExporting(true);
     
     try {
-      // Clone the content for export
       const clone = contentRef.current.cloneNode(true) as HTMLElement;
-      
-      // Remove buttons from clone
       clone.querySelectorAll('.no-print').forEach(el => el.remove());
       
-      // Get all styles
       const styles = Array.from(document.querySelectorAll('link[rel="stylesheet"], style'))
         .map((el) => el.outerHTML)
         .join("\n");
@@ -147,6 +156,7 @@ function AuditContent({ db, initialMonthKey, employee }: AuditContentProps) {
       a.download = `auditoria_${employee.name.replace(/\s+/g, "_")}_${monthKey}.html`;
       a.click();
       URL.revokeObjectURL(url);
+      toast.success("HTML exportado com sucesso!");
     } catch (error) {
       console.error("Erro ao exportar HTML:", error);
     } finally {
@@ -154,78 +164,99 @@ function AuditContent({ db, initialMonthKey, employee }: AuditContentProps) {
     }
   };
 
+  const bonusPercentOfCap = camadas.teto > 0 ? (camadas.bonusTotal / camadas.teto) * 100 : 0;
+
   return (
     <div ref={contentRef} className="min-h-screen bg-background text-foreground">
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border/50 no-print">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between flex-wrap gap-4">
-          <div>
-            <h1 className="text-xl font-bold">
-              <span className="text-primary">G2R</span> • Auditoria de Bônus
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              Relatório detalhado do período
-            </p>
-          </div>
-          
-          <div className="flex items-center gap-3 flex-wrap">
-            {/* Month Filter */}
-            <div className="flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-muted-foreground" />
-              <Select value={monthKey} onValueChange={setMonthKey}>
-                <SelectTrigger className="w-[180px] bg-background/50">
-                  <SelectValue placeholder="Selecione o mês" />
-                </SelectTrigger>
-                <SelectContent>
-                  {monthOptions.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+      {/* Premium Header */}
+      <header className="sticky top-0 z-50 no-print">
+        <div className="absolute inset-0 bg-background/60 backdrop-blur-xl border-b border-border/30" />
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 py-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-xl bg-primary/10 ring-1 ring-primary/20">
+                <Shield className="w-6 h-6 text-primary" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-lg sm:text-xl font-bold tracking-tight">
+                    <span className="text-primary">G2R</span>
+                    <span className="text-muted-foreground mx-2">•</span>
+                    Auditoria de Bônus
+                  </h1>
+                  <Badge className="bg-gradient-to-r from-primary/20 to-success/20 text-primary border border-primary/20 text-[10px]">
+                    <Sparkles className="w-3 h-3 mr-1" />
+                    Premium
+                  </Badge>
+                </div>
+                <p className="text-xs sm:text-sm text-muted-foreground">
+                  Relatório detalhado com transparência total
+                </p>
+              </div>
             </div>
             
-            <div className="flex gap-2">
-              <Button 
-                variant="default" 
-                size="sm" 
-                onClick={handleDownloadPDF}
-                disabled={isExporting}
-                className="gap-2"
-              >
-                {isExporting ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <FileText className="w-4 h-4" />
-                )}
-                PDF
-              </Button>
-              <Button variant="outline" size="sm" onClick={handlePrint}>
-                <Printer className="w-4 h-4 mr-2" />
-                Imprimir
-              </Button>
-              <Button variant="outline" size="sm" onClick={handleDownloadHTML}>
-                <Download className="w-4 h-4 mr-2" />
-                HTML
-              </Button>
+            <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-secondary/50 border border-border/30">
+                <Calendar className="w-4 h-4 text-primary" />
+                <Select value={monthKey} onValueChange={setMonthKey}>
+                  <SelectTrigger className="w-[140px] sm:w-[160px] h-8 text-xs sm:text-sm bg-transparent border-0 p-0 focus:ring-0">
+                    <SelectValue placeholder="Selecione" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {monthOptions.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="flex gap-1.5 sm:gap-2">
+                <Button 
+                  size="sm" 
+                  onClick={handleDownloadPDF}
+                  disabled={isExporting}
+                  className="h-8 gap-1.5 text-xs bg-primary/10 text-primary hover:bg-primary/20 border border-primary/30"
+                >
+                  {isExporting ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <FileText className="w-3.5 h-3.5" />
+                  )}
+                  <span className="hidden sm:inline">PDF</span>
+                </Button>
+                <Button variant="outline" size="sm" onClick={handlePrint} className="h-8 gap-1.5 text-xs">
+                  <Printer className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Imprimir</span>
+                </Button>
+                <Button variant="outline" size="sm" onClick={handleDownloadHTML} className="h-8 gap-1.5 text-xs">
+                  <Download className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">HTML</span>
+                </Button>
+              </div>
             </div>
           </div>
         </div>
       </header>
 
-      {/* Print Header - Only visible in print */}
-      <div className="hidden print:block px-4 py-4 border-b border-border/50">
-        <h1 className="text-xl font-bold">
-          <span className="text-primary">G2R</span> • Auditoria de Bônus
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Colaborador: {employee.name} | Período: {monthKey}
-        </p>
+      {/* Print Header */}
+      <div className="hidden print:block px-6 py-6 border-b border-border/30">
+        <div className="flex items-center gap-3">
+          <Shield className="w-8 h-8 text-primary" />
+          <div>
+            <h1 className="text-2xl font-bold">
+              <span className="text-primary">G2R</span> • Auditoria de Bônus
+            </h1>
+            <p className="text-muted-foreground">
+              {employee.name} | {employee.role} | Período: {monthKey}
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 py-8 space-y-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6 sm:space-y-8">
         {/* Summary Section */}
         <AuditSummary
           employee={employee}
@@ -235,129 +266,231 @@ function AuditContent({ db, initialMonthKey, employee }: AuditContentProps) {
           cfg={db.cfg}
         />
 
-        {/* Tabs for Charts and Tables */}
-        <Tabs defaultValue="charts" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 max-w-md no-print">
-            <TabsTrigger value="charts" className="flex items-center gap-2">
-              <BarChart3 className="w-4 h-4" />
-              Gráficos
-            </TabsTrigger>
-            <TabsTrigger value="layers" className="flex items-center gap-2">
-              <FileSpreadsheet className="w-4 h-4" />
-              Camadas
-            </TabsTrigger>
-            <TabsTrigger value="os" className="flex items-center gap-2">
-              <Table className="w-4 h-4" />
-              Ordens de Serviço
-            </TabsTrigger>
-          </TabsList>
+        {/* Premium Tabs */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <div className="no-print">
+            <TabsList className="inline-flex h-auto p-1 bg-secondary/30 border border-border/30 rounded-xl">
+              <TabsTrigger 
+                value="charts" 
+                className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-xs sm:text-sm data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-sm"
+              >
+                <BarChart3 className="w-4 h-4" />
+                <span>Gráficos</span>
+              </TabsTrigger>
+              <TabsTrigger 
+                value="layers" 
+                className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-xs sm:text-sm data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-sm"
+              >
+                <FileSpreadsheet className="w-4 h-4" />
+                <span>Camadas</span>
+              </TabsTrigger>
+              <TabsTrigger 
+                value="os" 
+                className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-xs sm:text-sm data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:shadow-sm"
+              >
+                <Table className="w-4 h-4" />
+                <span>Ordens de Serviço</span>
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
-          <TabsContent value="charts" className="mt-6 space-y-6 print:block">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card className="border-border/50 bg-card/50 backdrop-blur">
-                <CardHeader>
-                  <CardTitle className="text-lg">Média por Critério de Qualidade</CardTitle>
-                  <CardDescription>
-                    Comparação entre a média obtida e o máximo de cada critério
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <CriteriaAverageChart osList={osList} />
-                </CardContent>
-              </Card>
+          <AnimatePresence mode="wait">
+            <TabsContent value="charts" className="mt-6 space-y-6 print:block" asChild>
+              <motion.div
+                key="charts"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
+              >
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                  <PremiumCard
+                    icon={<BarChart3 className="w-5 h-5" />}
+                    title="Média por Critério de Qualidade"
+                    description="Comparação entre a média obtida e o máximo de cada critério"
+                  >
+                    <CriteriaAverageChart osList={osList} />
+                  </PremiumCard>
 
-              <Card className="border-border/50 bg-card/50 backdrop-blur">
-                <CardHeader>
-                  <CardTitle className="text-lg">Distribuição por Dificuldade</CardTitle>
-                  <CardDescription>
-                    Quantidade de OS por nível de dificuldade
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <DifficultyPieChart osList={osList} cfg={db.cfg} />
-                </CardContent>
-              </Card>
-            </div>
-
-            <Card className="border-border/50 bg-card/50 backdrop-blur">
-              <CardHeader>
-                <CardTitle className="text-lg">Evolução do CE Qualidade</CardTitle>
-                <CardDescription>
-                  Acumulado de CE Final e CE Qualidade ao longo do mês
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <CEQEvolutionChart osList={osList} />
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="layers" className="mt-6 space-y-6 print:block">
-            <Card className="border-border/50 bg-card/50 backdrop-blur">
-              <CardHeader>
-                <CardTitle className="text-lg">Bônus por Camada</CardTitle>
-                <CardDescription>
-                  Distribuição do bônus entre Esforço, Qualidade e Superação
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <BonusLayersChart camadas={camadas} />
-              </CardContent>
-            </Card>
-
-            <Card className="border-border/50 bg-card/50 backdrop-blur">
-              <CardHeader>
-                <CardTitle className="text-lg">Fórmula de Cálculo</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="p-4 rounded-lg bg-muted/30 border border-border/30 font-mono text-sm">
-                  <p className="text-muted-foreground mb-2">// Camada 1: Esforço</p>
-                  <p>bonusEsforço = TETO × 0.50 × taxaPrazo</p>
-                  <p className="text-muted-foreground">// taxaPrazo = OS dentro do prazo / Total OS</p>
+                  <PremiumCard
+                    icon={<Award className="w-5 h-5" />}
+                    title="Distribuição por Dificuldade"
+                    description="Quantidade de OS por nível de dificuldade"
+                  >
+                    <DifficultyPieChart osList={osList} cfg={db.cfg} />
+                  </PremiumCard>
                 </div>
-                <div className="p-4 rounded-lg bg-muted/30 border border-border/30 font-mono text-sm">
-                  <p className="text-muted-foreground mb-2">// Camada 2: Qualidade</p>
-                  <p>bonusQualidade = TETO × 0.40 × (médiaPontuação / maxPts)</p>
-                </div>
-                <div className="p-4 rounded-lg bg-muted/30 border border-border/30 font-mono text-sm">
-                  <p className="text-muted-foreground mb-2">// Camada 3: Superação</p>
-                  <p>SE ceQTotal {'>'} médiaEquipe × 1.1:</p>
-                  <p className="ml-4">bonusSuperação = TETO × 0.10 × fatorSuperação</p>
-                </div>
-                <div className="p-4 rounded-lg bg-primary/10 border border-primary/20 font-mono text-sm">
-                  <p className="text-primary mb-2">// Bônus Final</p>
-                  <p>bonusTotal = (bonusEsforço + bonusQualidade + bonusSuperação) × fatorHoras</p>
-                  <p className="text-muted-foreground">// fatorHoras = min(1, horasTrabalhadas / horasEsperadas)</p>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
 
-          <TabsContent value="os" className="mt-6 print:block">
-            <Card className="border-border/50 bg-card/50 backdrop-blur">
-              <CardHeader>
-                <CardTitle className="text-lg">Ordens de Serviço Executadas</CardTitle>
-                <CardDescription>
-                  Lista completa de OS do colaborador no período selecionado ({monthKey})
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <AuditOSTable osList={osList} cfg={db.cfg} />
-              </CardContent>
-            </Card>
-          </TabsContent>
+                <PremiumCard
+                  icon={<TrendingUp className="w-5 h-5" />}
+                  title="Evolução do CE Qualidade"
+                  description="Acumulado de CE Final e CE Qualidade ao longo do mês"
+                >
+                  <CEQEvolutionChart osList={osList} />
+                </PremiumCard>
+              </motion.div>
+            </TabsContent>
+
+            <TabsContent value="layers" className="mt-6 space-y-6 print:block" asChild>
+              <motion.div
+                key="layers"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
+              >
+                <PremiumCard
+                  icon={<BarChart3 className="w-5 h-5" />}
+                  title="Bônus por Camada"
+                  description="Distribuição visual do bônus entre Esforço, Qualidade e Superação"
+                >
+                  <BonusLayersChart camadas={camadas} />
+                </PremiumCard>
+
+                <PremiumCard
+                  icon={<FileSpreadsheet className="w-5 h-5" />}
+                  title="Fórmula de Cálculo"
+                  description="Transparência total no método de cálculo do bônus"
+                >
+                  <div className="space-y-3">
+                    <FormulaBlock
+                      title="Camada 1: Esforço"
+                      formula="bonusEsforço = TETO × 0.50 × taxaPrazo"
+                      hint="taxaPrazo = OS dentro do prazo / Total OS"
+                      color="text-success"
+                    />
+                    <FormulaBlock
+                      title="Camada 2: Qualidade"
+                      formula="bonusQualidade = TETO × 0.40 × (médiaPontuação / maxPts)"
+                      color="text-primary"
+                    />
+                    <FormulaBlock
+                      title="Camada 3: Superação"
+                      formula={`SE ceQTotal > médiaEquipe × 1.1: bonusSuperação = TETO × 0.10 × fatorSuperação`}
+                      color="text-warning"
+                    />
+                    <div className="p-4 rounded-xl bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border border-primary/20 mt-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Sparkles className="w-4 h-4 text-primary" />
+                        <span className="font-semibold text-primary text-sm">Bônus Final</span>
+                      </div>
+                      <code className="text-xs sm:text-sm font-mono text-foreground">
+                        bonusTotal = (bonusEsforço + bonusQualidade + bonusSuperação) × fatorHoras
+                      </code>
+                      <p className="text-[10px] sm:text-xs text-muted-foreground mt-2">
+                        fatorHoras = min(1, horasTrabalhadas / horasEsperadas)
+                      </p>
+                    </div>
+                  </div>
+                </PremiumCard>
+              </motion.div>
+            </TabsContent>
+
+            <TabsContent value="os" className="mt-6 print:block" asChild>
+              <motion.div
+                key="os"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
+              >
+                <PremiumCard
+                  icon={<Table className="w-5 h-5" />}
+                  title="Ordens de Serviço Executadas"
+                  description={`Lista completa de ${osList.length} OS do colaborador no período selecionado (${monthKey})`}
+                >
+                  <AuditOSTable osList={osList} cfg={db.cfg} />
+                </PremiumCard>
+              </motion.div>
+            </TabsContent>
+          </AnimatePresence>
         </Tabs>
 
-        {/* Footer */}
-        <footer className="pt-8 border-t border-border/50 text-center text-sm text-muted-foreground">
-          <p>
-            Gerado em: {new Date().toLocaleString("pt-BR")} | Período: {monthKey}
-          </p>
-          <p className="mt-1">
-            G2R • Bonificação — Dev. Gabriel Roberti
-          </p>
+        {/* Premium Footer */}
+        <footer className="pt-6 sm:pt-8 border-t border-border/30">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-secondary/50">
+                <Shield className="w-4 h-4 text-muted-foreground" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">
+                  Relatório gerado em {new Date().toLocaleString("pt-BR")}
+                </p>
+                <p className="text-[10px] text-muted-foreground/60">
+                  Período de referência: {monthKey}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-primary font-bold text-sm">G2R</span>
+              <span className="text-muted-foreground text-xs">• Sistema de Bonificação</span>
+              <Badge variant="outline" className="text-[10px] h-5">
+                v2.0
+              </Badge>
+            </div>
+          </div>
         </footer>
       </main>
+    </div>
+  );
+}
+
+// Premium Card Component
+function PremiumCard({ 
+  icon, 
+  title, 
+  description, 
+  children 
+}: { 
+  icon: React.ReactNode; 
+  title: string; 
+  description?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Card className="overflow-hidden border-border/30 bg-gradient-to-br from-card/80 via-card/50 to-transparent backdrop-blur-sm">
+      <CardHeader className="pb-3 border-b border-border/20">
+        <div className="flex items-start gap-3">
+          <div className="p-2 rounded-lg bg-primary/10 text-primary shrink-0">
+            {icon}
+          </div>
+          <div className="min-w-0">
+            <CardTitle className="text-base sm:text-lg font-semibold">{title}</CardTitle>
+            {description && (
+              <CardDescription className="text-xs sm:text-sm mt-0.5">{description}</CardDescription>
+            )}
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="pt-4 sm:pt-6">
+        {children}
+      </CardContent>
+    </Card>
+  );
+}
+
+// Formula Block Component
+function FormulaBlock({ 
+  title, 
+  formula, 
+  hint, 
+  color 
+}: { 
+  title: string; 
+  formula: string; 
+  hint?: string;
+  color: string;
+}) {
+  return (
+    <div className="p-3 sm:p-4 rounded-xl bg-secondary/20 border border-border/20">
+      <p className={`text-xs font-semibold ${color} mb-2`}>{title}</p>
+      <code className="text-xs sm:text-sm font-mono text-foreground/90 block">
+        {formula}
+      </code>
+      {hint && (
+        <p className="text-[10px] sm:text-xs text-muted-foreground mt-2">// {hint}</p>
+      )}
     </div>
   );
 }
@@ -373,14 +506,12 @@ export function openAuditWindow(
     return;
   }
 
-  // Open new window
   const win = window.open("", "_blank", "width=1200,height=900");
   if (!win) {
     toast.error("Não foi possível abrir a janela de auditoria. Verifique se pop-ups estão bloqueados.");
     return;
   }
 
-  // Copy styles from main document
   const styles = Array.from(document.querySelectorAll('link[rel="stylesheet"], style'))
     .map((el) => el.outerHTML)
     .join("\n");
@@ -409,7 +540,6 @@ export function openAuditWindow(
   `);
   win.document.close();
 
-  // Wait for document to be ready and render React
   setTimeout(() => {
     const root = win.document.getElementById("audit-root");
     if (root) {
