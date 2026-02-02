@@ -63,21 +63,21 @@ export function DatePicker({ value, onChange, placeholder = "Selecione uma data"
   };
 
   return (
-    <div className={cn("relative flex gap-1", className)}>
+    <div className={cn("relative flex items-center", className)}>
       <Input
         value={inputValue}
         onChange={handleInputChange}
         placeholder="DD/MM/AAAA"
-        className="input-focus-ring flex-1"
+        className="input-focus-ring pr-10"
         maxLength={10}
       />
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button
-            variant="outline"
+            variant="ghost"
             size="icon"
             className={cn(
-              "shrink-0",
+              "absolute right-0 h-full px-3 hover:bg-transparent",
               !value && "text-muted-foreground"
             )}
             type="button"
