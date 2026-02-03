@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import { Database, Employee, OSRecord, BonusCamadas } from "@/types/bonus";
@@ -512,116 +512,111 @@ function AuditContent({ db, initialMonthKey, employee }: AuditContentProps) {
             </TabsList>
           </div>
 
-          <AnimatePresence mode="wait">
-            <TabsContent value="charts" className="mt-6 space-y-6 print:block" asChild>
-              <motion.div
-                key="charts"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.2 }}
-              >
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-                  <PremiumCard
-                    icon={<BarChart3 className="w-5 h-5" />}
-                    title="Média por Critério de Qualidade"
-                    description="Comparação entre a média obtida e o máximo de cada critério"
-                  >
-                    <CriteriaAverageChart osList={osList} />
-                  </PremiumCard>
-
-                  <PremiumCard
-                    icon={<Award className="w-5 h-5" />}
-                    title="Distribuição por Dificuldade"
-                    description="Quantidade de OS por nível de dificuldade"
-                  >
-                    <DifficultyPieChart osList={osList} cfg={db.cfg} />
-                  </PremiumCard>
-                </div>
-
-                <PremiumCard
-                  icon={<TrendingUp className="w-5 h-5" />}
-                  title="Evolução do CE Qualidade"
-                  description="Acumulado de CE Final e CE Qualidade ao longo do mês"
-                >
-                  <CEQEvolutionChart osList={osList} />
-                </PremiumCard>
-              </motion.div>
-            </TabsContent>
-
-            <TabsContent value="layers" className="mt-6 space-y-6 print:block" asChild>
-              <motion.div
-                key="layers"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.2 }}
-              >
+          <TabsContent value="charts" className="mt-6 space-y-6 print:block">
+            <motion.div
+              key={`charts-${activeTab}`}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.15 }}
+            >
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                 <PremiumCard
                   icon={<BarChart3 className="w-5 h-5" />}
-                  title="Bônus por Camada"
-                  description="Distribuição visual do bônus entre Esforço, Qualidade e Superação"
+                  title="Média por Critério de Qualidade"
+                  description="Comparação entre a média obtida e o máximo de cada critério"
                 >
-                  <BonusLayersChart camadas={camadas} />
+                  <CriteriaAverageChart osList={osList} />
                 </PremiumCard>
 
                 <PremiumCard
-                  icon={<FileSpreadsheet className="w-5 h-5" />}
-                  title="Fórmula de Cálculo"
-                  description="Transparência total no método de cálculo do bônus"
+                  icon={<Award className="w-5 h-5" />}
+                  title="Distribuição por Dificuldade"
+                  description="Quantidade de OS por nível de dificuldade"
                 >
-                  <div className="space-y-3">
-                    <FormulaBlock
-                      title="Camada 1: Esforço"
-                      formula="bonusEsforço = TETO × 0.50 × taxaPrazo"
-                      hint="taxaPrazo = OS dentro do prazo / Total OS"
-                      color="text-success"
-                    />
-                    <FormulaBlock
-                      title="Camada 2: Qualidade"
-                      formula="bonusQualidade = TETO × 0.40 × (médiaPontuação / maxPts)"
-                      color="text-primary"
-                    />
-                    <FormulaBlock
-                      title="Camada 3: Superação"
-                      formula={`SE ceQTotal > médiaEquipe × 1.1: bonusSuperação = TETO × 0.10 × fatorSuperação`}
-                      color="text-warning"
-                    />
-                    <div className="p-4 rounded-xl bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border border-primary/20 mt-4">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Sparkles className="w-4 h-4 text-primary" />
-                        <span className="font-semibold text-primary text-sm">Bônus Final</span>
-                      </div>
-                      <code className="text-xs sm:text-sm font-mono text-foreground">
-                        bonusTotal = (bonusEsforço + bonusQualidade + bonusSuperação) × fatorHoras
-                      </code>
-                      <p className="text-[10px] sm:text-xs text-muted-foreground mt-2">
-                        fatorHoras = min(1, horasTrabalhadas / horasEsperadas)
-                      </p>
-                    </div>
-                  </div>
+                  <DifficultyPieChart osList={osList} cfg={db.cfg} />
                 </PremiumCard>
-              </motion.div>
-            </TabsContent>
+              </div>
 
-            <TabsContent value="os" className="mt-6 print:block" asChild>
-              <motion.div
-                key="os"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.2 }}
+              <PremiumCard
+                icon={<TrendingUp className="w-5 h-5" />}
+                title="Evolução do CE Qualidade"
+                description="Acumulado de CE Final e CE Qualidade ao longo do mês"
               >
-                <PremiumCard
-                  icon={<Table className="w-5 h-5" />}
-                  title="Ordens de Serviço Executadas"
-                  description={`Lista completa de ${osList.length} OS do colaborador no período selecionado (${monthKey})`}
-                >
-                  <AuditOSTable osList={osList} cfg={db.cfg} />
-                </PremiumCard>
-              </motion.div>
-            </TabsContent>
-          </AnimatePresence>
+                <CEQEvolutionChart osList={osList} />
+              </PremiumCard>
+            </motion.div>
+          </TabsContent>
+
+          <TabsContent value="layers" className="mt-6 space-y-6 print:block">
+            <motion.div
+              key={`layers-${activeTab}`}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.15 }}
+            >
+              <PremiumCard
+                icon={<BarChart3 className="w-5 h-5" />}
+                title="Bônus por Camada"
+                description="Distribuição visual do bônus entre Esforço, Qualidade e Superação"
+              >
+                <BonusLayersChart camadas={camadas} />
+              </PremiumCard>
+
+              <PremiumCard
+                icon={<FileSpreadsheet className="w-5 h-5" />}
+                title="Fórmula de Cálculo"
+                description="Transparência total no método de cálculo do bônus"
+              >
+                <div className="space-y-3">
+                  <FormulaBlock
+                    title="Camada 1: Esforço"
+                    formula="bonusEsforço = TETO × 0.50 × taxaPrazo"
+                    hint="taxaPrazo = OS dentro do prazo / Total OS"
+                    color="text-success"
+                  />
+                  <FormulaBlock
+                    title="Camada 2: Qualidade"
+                    formula="bonusQualidade = TETO × 0.40 × (médiaPontuação / maxPts)"
+                    color="text-primary"
+                  />
+                  <FormulaBlock
+                    title="Camada 3: Superação"
+                    formula={`SE ceQTotal > médiaEquipe × 1.1: bonusSuperação = TETO × 0.10 × fatorSuperação`}
+                    color="text-warning"
+                  />
+                  <div className="p-4 rounded-xl bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border border-primary/20 mt-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Sparkles className="w-4 h-4 text-primary" />
+                      <span className="font-semibold text-primary text-sm">Bônus Final</span>
+                    </div>
+                    <code className="text-xs sm:text-sm font-mono text-foreground">
+                      bonusTotal = (bonusEsforço + bonusQualidade + bonusSuperação) × fatorHoras
+                    </code>
+                    <p className="text-[10px] sm:text-xs text-muted-foreground mt-2">
+                      fatorHoras = min(1, horasTrabalhadas / horasEsperadas)
+                    </p>
+                  </div>
+                </div>
+              </PremiumCard>
+            </motion.div>
+          </TabsContent>
+
+          <TabsContent value="os" className="mt-6 print:block">
+            <motion.div
+              key={`os-${activeTab}`}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.15 }}
+            >
+              <PremiumCard
+                icon={<Table className="w-5 h-5" />}
+                title="Ordens de Serviço Executadas"
+                description={`Lista completa de ${osList.length} OS do colaborador no período selecionado (${monthKey})`}
+              >
+                <AuditOSTable osList={osList} cfg={db.cfg} />
+              </PremiumCard>
+            </motion.div>
+          </TabsContent>
         </Tabs>
 
         {/* Premium Footer */}
