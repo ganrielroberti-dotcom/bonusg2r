@@ -206,4 +206,23 @@ describe("Auvo Hours Calculation", () => {
     // Feb 28 15:00 UTC to Mar 1 03:00 UTC = 12h
     expect(result.hours).toBe(12);
   });
+
+  it("clips cross-month active OS from previous month to current month only", () => {
+    // OS checked in Jan 25, still active, "now" is Feb 10
+    const now = new Date("2026-02-10T18:00:00Z");
+    const result = calculateTaskHours(
+      {
+        checkInDate: "2026-01-25T12:00:00Z",
+        checkOutDate: null,
+        taskStatus: 3,
+        durationDecimal: null,
+      },
+      monthStart,
+      monthEnd,
+      now
+    );
+    // Should clip start to Feb 1 00:00 BRT (03:00 UTC), end at now
+    // Feb 1 03:00 UTC to Feb 10 18:00 UTC = 231h
+    expect(result.hours).toBe(231);
+  });
 });
