@@ -35,6 +35,22 @@ async function getAuvoToken(): Promise<string> {
   return token;
 }
 
+interface AuvoListResponse {
+  result: {
+    entityList?: unknown[];
+    content?: unknown[];  // fallback
+    pagedSearchReturnData?: { totalPages?: number; currentPage?: number };
+    totalPages?: number;  // fallback
+  };
+}
+
+function extractList(data: AuvoListResponse): { items: unknown[]; totalPages: number } {
+  const r = data?.result;
+  const items = r?.entityList || r?.content || [];
+  const totalPages = r?.pagedSearchReturnData?.totalPages || r?.totalPages || (items.length > 0 ? 1 : 0);
+  return { items, totalPages };
+}
+
 async function auvoFetch(path: string, retries = 2): Promise<unknown> {
   const token = await getAuvoToken();
   const url = `${AUVO_BASE}${path}`;
@@ -45,7 +61,6 @@ async function auvoFetch(path: string, retries = 2): Promise<unknown> {
     });
 
     if (res.status === 429) {
-      // Rate limited - wait and retry
       const wait = Math.pow(2, attempt + 1) * 1000;
       console.warn(`Rate limited on ${path}, waiting ${wait}ms (attempt ${attempt + 1})`);
       await new Promise((r) => setTimeout(r, wait));
@@ -88,11 +103,11 @@ async function searchTask(body: { osNumber: string }) {
 
   // Search by externalId first
   const filter = JSON.stringify({ externalId: osNumber });
-  const result = (await auvoFetch(
+  const raw = await auvoFetch(
     `/tasks/?paramFilter=${encodeURIComponent(filter)}&page=1&pageSize=1&order=desc`
-  )) as { result: { content: unknown[] } };
-
-  let task = result?.result?.content?.[0] as Record<string, unknown> | undefined;
+  );
+  const { items } = extractList(raw as AuvoListResponse);
+  let task = items[0] as Record<string, unknown> | undefined;
 
   // If not found by externalId, try by taskID (if numeric)
   if (!task && /^\d+$/.test(osNumber)) {
@@ -133,14 +148,13 @@ async function listTasks(body: { startDate: string; endDate: string; userId?: nu
     const filter: Record<string, unknown> = { startDate, endDate };
     if (userId) filter.idUserTo = userId;
 
-    const result = (await auvoFetch(
+    const raw = await auvoFetch(
       `/tasks/?paramFilter=${encodeURIComponent(JSON.stringify(filter))}&page=${page}&pageSize=${pageSize}&order=asc`
-    )) as { result: { content: unknown[]; totalPages: number } };
+    );
+    const { items, totalPages } = extractList(raw as AuvoListResponse);
+    allTasks.push(...items);
 
-    const content = result?.result?.content || [];
-    allTasks.push(...content);
-
-    if (page >= (result?.result?.totalPages || 1)) break;
+    if (page >= totalPages || totalPages === 0) break;
     page++;
   }
 
@@ -153,14 +167,13 @@ async function listUsers() {
   const pageSize = 100;
 
   while (true) {
-    const result = (await auvoFetch(
-      `/users/?paramFilter=${encodeURIComponent("{}")}&page=${page}&pageSize=${pageSize}&order=asc`
-    )) as { result: { content: unknown[]; totalPages: number } };
+    const url = `/users/?page=${page}&pageSize=${pageSize}&order=asc`;
+    const raw = await auvoFetch(url);
+    const { items, totalPages } = extractList(raw as AuvoListResponse);
+    console.log(`Users page ${page}: ${items.length} users, totalPages: ${totalPages}`);
+    allUsers.push(...items);
 
-    const content = result?.result?.content || [];
-    allUsers.push(...content);
-
-    if (page >= (result?.result?.totalPages || 1)) break;
+    if (page >= totalPages || totalPages === 0) break;
     page++;
   }
 

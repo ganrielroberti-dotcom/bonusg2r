@@ -234,14 +234,15 @@ Deno.serve(async (req: Request) => {
             idUserTo: mapping.auvo_user_id,
           });
 
-          const result = (await auvoFetch(
+          const raw = (await auvoFetch(
             `/tasks/?paramFilter=${encodeURIComponent(filter)}&page=${page}&pageSize=100&order=asc`
-          )) as { result: { content: TaskData[]; totalPages: number } };
+          )) as { result: { entityList?: TaskData[]; content?: TaskData[]; pagedSearchReturnData?: { totalPages?: number }; totalPages?: number } };
 
-          const content = result?.result?.content || [];
+          const content = raw?.result?.entityList || raw?.result?.content || [];
           allTasks.push(...content);
 
-          if (page >= (result?.result?.totalPages || 1)) break;
+          const totalPages = raw?.result?.pagedSearchReturnData?.totalPages || raw?.result?.totalPages || 1;
+          if (page >= totalPages) break;
           page++;
         }
 
