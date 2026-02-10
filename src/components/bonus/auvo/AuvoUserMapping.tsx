@@ -23,15 +23,15 @@ export function AuvoUserMapping() {
   const mappedAuvoIds = new Set(mappings.map((m) => m.auvo_user_id));
 
   const availableEmployees = db.employees.filter((e) => !mappedEmployeeIds.has(e.id));
-  const availableAuvoUsers = auvoUsers.filter((u) => !mappedAuvoIds.has(u.userId));
+  const availableAuvoUsers = auvoUsers.filter((u) => !mappedAuvoIds.has(u.userID));
 
   const handleAdd = async () => {
     if (!selectedAuvoUser || !selectedEmployee) return;
-    const auvoUser = auvoUsers.find((u) => String(u.userId) === selectedAuvoUser);
+    const auvoUser = auvoUsers.find((u) => String(u.userID) === selectedAuvoUser);
     if (!auvoUser) return;
 
     setIsSaving(true);
-    await addMapping(auvoUser.userId, auvoUser.name, selectedEmployee);
+    await addMapping(auvoUser.userID, auvoUser.name, selectedEmployee);
     setSelectedAuvoUser("");
     setSelectedEmployee("");
     setIsSaving(false);
@@ -65,7 +65,7 @@ export function AuvoUserMapping() {
               </SelectTrigger>
               <SelectContent>
                 {availableAuvoUsers.map((u) => (
-                  <SelectItem key={u.userId} value={String(u.userId)}>
+                  <SelectItem key={u.userID} value={String(u.userID)}>
                     {u.name}
                   </SelectItem>
                 ))}

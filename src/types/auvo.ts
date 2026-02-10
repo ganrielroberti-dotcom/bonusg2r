@@ -18,7 +18,7 @@ export interface AuvoTask {
 }
 
 export interface AuvoUser {
-  userId: number;
+  userID: number;
   name: string;
   email: string;
   jobPosition: string;
