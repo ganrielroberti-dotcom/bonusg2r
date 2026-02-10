@@ -221,30 +221,57 @@ Deno.serve(async (req: Request) => {
     const fmtDate = (d: Date) =>
       `${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")}/${d.getFullYear()}`;
 
+    // Previous month bounds for cross-month task fetching
+    const [pYear, pMonth] = monthKey.split("-").map(Number);
+    const prevMonthDate = new Date(Date.UTC(pYear, pMonth - 2, 1));
+    const prevMonthStart = new Date(Date.UTC(prevMonthDate.getUTCFullYear(), prevMonthDate.getUTCMonth(), 1, -SAO_PAULO_OFFSET, 0, 0));
+
+    // Helper to fetch all pages of tasks for a user within a date range
+    async function fetchAllTasks(userId: number, startDate: Date, endDate: Date): Promise<TaskData[]> {
+      const tasks: TaskData[] = [];
+      let page = 1;
+      while (true) {
+        const filter = JSON.stringify({
+          startDate: fmtDate(startDate),
+          endDate: fmtDate(endDate),
+          idUserTo: userId,
+        });
+        const raw = (await auvoFetch(
+          `/tasks/?paramFilter=${encodeURIComponent(filter)}&page=${page}&pageSize=100&order=asc`
+        )) as { result: { entityList?: TaskData[]; content?: TaskData[]; pagedSearchReturnData?: { totalPages?: number }; totalPages?: number } };
+        const content = raw?.result?.entityList || raw?.result?.content || [];
+        tasks.push(...content);
+        const totalPages = raw?.result?.pagedSearchReturnData?.totalPages || raw?.result?.totalPages || 1;
+        if (page >= totalPages) break;
+        page++;
+      }
+      return tasks;
+    }
+
     for (const mapping of mappings) {
       try {
-        // Fetch all tasks for this user in the month
-        const allTasks: TaskData[] = [];
-        let page = 1;
+        // Fetch tasks from the current month
+        const currentMonthTasks = await fetchAllTasks(mapping.auvo_user_id, monthStart, monthEnd);
 
-        while (true) {
-          const filter = JSON.stringify({
-            startDate: fmtDate(monthStart),
-            endDate: fmtDate(monthEnd),
-            idUserTo: mapping.auvo_user_id,
-          });
+        // Fetch tasks from previous month that might still be active (cross-month)
+        const prevMonthTasks = await fetchAllTasks(mapping.auvo_user_id, prevMonthStart, monthStart);
 
-          const raw = (await auvoFetch(
-            `/tasks/?paramFilter=${encodeURIComponent(filter)}&page=${page}&pageSize=100&order=asc`
-          )) as { result: { entityList?: TaskData[]; content?: TaskData[]; pagedSearchReturnData?: { totalPages?: number }; totalPages?: number } };
+        // Filter prev month tasks: only include those with activity in current month
+        // (active/paused without checkout, or checkout falls within current month)
+        const crossMonthTasks = prevMonthTasks.filter((t) => {
+          // Skip tasks already in current month results (by taskID)
+          if (currentMonthTasks.some((ct) => ct.taskID === t.taskID)) return false;
+          // Active tasks (status 3) with checkIn before monthEnd — they have hours in current month
+          if (t.taskStatus === 3 && t.checkInDate) return true;
+          // Completed tasks whose checkout falls within current month
+          if (t.checkOutDate) {
+            const checkout = new Date(t.checkOutDate);
+            return !isNaN(checkout.getTime()) && checkout > monthStart;
+          }
+          return false;
+        });
 
-          const content = raw?.result?.entityList || raw?.result?.content || [];
-          allTasks.push(...content);
-
-          const totalPages = raw?.result?.pagedSearchReturnData?.totalPages || raw?.result?.totalPages || 1;
-          if (page >= totalPages) break;
-          page++;
-        }
+        const allTasks = [...currentMonthTasks, ...crossMonthTasks];
 
         // Calculate hours for each task
         let totalHours = 0;
