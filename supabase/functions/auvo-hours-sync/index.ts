@@ -227,22 +227,27 @@ Deno.serve(async (req: Request) => {
     const lookbackStart = new Date(Date.UTC(pYear, pMonth - 4, 1, -SAO_PAULO_OFFSET, 0, 0));
 
     // Helper to fetch all pages of tasks for a user within a date range
+    const PAGE_SIZE = 50; // Auvo API may cap at a lower size than requested
     async function fetchAllTasks(userId: number, startDate: Date, endDate: Date): Promise<TaskData[]> {
       const tasks: TaskData[] = [];
       let page = 1;
-      while (true) {
+      const maxPages = 50; // safety limit
+      while (page <= maxPages) {
         const filter = JSON.stringify({
           startDate: fmtDate(startDate),
           endDate: fmtDate(endDate),
           idUserTo: userId,
         });
         const raw = (await auvoFetch(
-          `/tasks/?paramFilter=${encodeURIComponent(filter)}&page=${page}&pageSize=100&order=asc`
+          `/tasks/?paramFilter=${encodeURIComponent(filter)}&page=${page}&pageSize=${PAGE_SIZE}&order=asc`
         )) as { result: { entityList?: TaskData[]; content?: TaskData[]; pagedSearchReturnData?: { totalPages?: number }; totalPages?: number } };
         const content = raw?.result?.entityList || raw?.result?.content || [];
         tasks.push(...content);
+        
+        // Stop if: empty page, less items than page size, or totalPages says we're done
+        if (content.length === 0) break;
         const totalPages = raw?.result?.pagedSearchReturnData?.totalPages || raw?.result?.totalPages || 1;
-        if (page >= totalPages) break;
+        if (page >= totalPages && content.length < PAGE_SIZE) break;
         page++;
       }
       return tasks;
@@ -277,8 +282,8 @@ Deno.serve(async (req: Request) => {
             return !isNaN(checkout.getTime()) && checkout > monthStart;
           }
           
-          // Paused tasks (status 6) with checkIn in current month
-          if (t.taskStatus === 6 && checkin && checkin >= monthStart && checkin < monthEnd) return true;
+          // Paused tasks (status 6) from previous month with durationDecimal (work near month boundary)
+          if (t.taskStatus === 6 && checkin && isRecentTask && t.durationDecimal) return true;
           
           return false;
         });

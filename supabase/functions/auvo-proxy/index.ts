@@ -101,21 +101,32 @@ async function searchTask(body: { osNumber: string }) {
     return { found: true, task: cached.data, cached: true };
   }
 
-  // Search by externalId first
-  const filter = JSON.stringify({ externalId: osNumber });
-  const raw = await auvoFetch(
-    `/tasks/?paramFilter=${encodeURIComponent(filter)}&page=1&pageSize=1&order=desc`
-  );
-  const { items } = extractList(raw as AuvoListResponse);
-  let task = items[0] as Record<string, unknown> | undefined;
-
-  // If not found by externalId, try by taskID (if numeric)
-  if (!task && /^\d+$/.test(osNumber)) {
+  // Try by taskID first (if numeric) - most reliable
+  let task: Record<string, unknown> | undefined;
+  if (/^\d+$/.test(osNumber)) {
     try {
       const byId = (await auvoFetch(`/tasks/${osNumber}`)) as { result: Record<string, unknown> };
       if (byId?.result) task = byId.result;
     } catch {
-      // not found
+      // not found by ID
+    }
+  }
+
+  // If not found by ID, try searching by externalId
+  if (!task) {
+    try {
+      const now = new Date();
+      const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 6, 1);
+      const fmtDate = (d: Date) =>
+        `${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")}/${d.getFullYear()}`;
+      const filter = JSON.stringify({ externalId: osNumber, startDate: fmtDate(sixMonthsAgo), endDate: fmtDate(now) });
+      const raw = await auvoFetch(
+        `/tasks/?paramFilter=${encodeURIComponent(filter)}&page=1&pageSize=1&order=desc`
+      );
+      const { items } = extractList(raw as AuvoListResponse);
+      if (items[0]) task = items[0] as Record<string, unknown>;
+    } catch {
+      // externalId search failed
     }
   }
 
@@ -142,9 +153,10 @@ async function listTasks(body: { startDate: string; endDate: string; userId?: nu
   const { startDate, endDate, userId } = body;
   const allTasks: unknown[] = [];
   let page = 1;
-  const pageSize = 100;
+  const pageSize = 50; // Auvo API may cap at a lower size than requested
+  const maxPages = 50; // safety limit
 
-  while (true) {
+  while (page <= maxPages) {
     const filter: Record<string, unknown> = { startDate, endDate };
     if (userId) filter.idUserTo = userId;
 
@@ -154,7 +166,9 @@ async function listTasks(body: { startDate: string; endDate: string; userId?: nu
     const { items, totalPages } = extractList(raw as AuvoListResponse);
     allTasks.push(...items);
 
-    if (page >= totalPages || totalPages === 0) break;
+    // Stop if: empty page, less items than page size, or totalPages says we're done
+    if (items.length === 0) break;
+    if (page >= totalPages && items.length < pageSize) break;
     page++;
   }
 
