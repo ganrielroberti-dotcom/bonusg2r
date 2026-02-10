@@ -11,6 +11,7 @@ import { TabsNavigation } from "./TabsNavigation";
 import { OSForm } from "./OSForm";
 import { EmployeesTab } from "./EmployeesTab";
 import { ConfigTab } from "./ConfigTab";
+import { AuvoHoursReport } from "./auvo/AuvoHoursReport";
 import { OSRecord } from "@/types/bonus";
 
 interface LeftPanelProps {
@@ -113,6 +114,7 @@ export function LeftPanel({ editingOS, onClearEditing }: LeftPanelProps) {
         </div>
       )}
       {activeTab === "colaboradores" && <EmployeesTab />}
+      {activeTab === "horasAuvo" && <AuvoHoursReport />}
       {activeTab === "config" && <ConfigTab />}
     </motion.section>
   );

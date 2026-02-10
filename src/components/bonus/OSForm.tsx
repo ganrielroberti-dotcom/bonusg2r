@@ -14,6 +14,7 @@ import { todayISO, monthKeyFromDate } from "@/lib/dateHelpers";
 import { calculateOSMetrics } from "@/lib/bonusCalculator";
 import { OSRecord } from "@/types/bonus";
 import { KPICard } from "./KPICard";
+import { AuvoOSLookup } from "./auvo/AuvoOSLookup";
 import { toast } from "sonner";
 import { osFormSchema, getFirstError } from "@/lib/validations";
 
@@ -171,13 +172,23 @@ export function OSForm({ editingOS, onClearEditing }: OSFormProps) {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="space-y-1.5">
           <Label htmlFor="osId">Número da OS</Label>
-          <Input
-            id="osId"
-            value={osId}
-            onChange={(e) => setOsId(e.target.value)}
-            placeholder="Ex.: OS-2026-00123"
-            className="input-focus-ring"
-          />
+          <div className="flex gap-2">
+            <Input
+              id="osId"
+              value={osId}
+              onChange={(e) => setOsId(e.target.value)}
+              placeholder="Ex.: OS-2026-00123"
+              className="input-focus-ring"
+            />
+            <AuvoOSLookup
+              osNumber={osId}
+              onDataPulled={(data) => {
+                setOsId(data.osId);
+                setCliente(data.cliente);
+                if (data.date) setDate(data.date);
+              }}
+            />
+          </div>
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="cliente">Cliente</Label>

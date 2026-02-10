@@ -56,6 +56,133 @@ export type Database = {
         }
         Relationships: []
       }
+      auvo_hours_cache: {
+        Row: {
+          auvo_user_id: number
+          employee_id: string
+          id: string
+          month_key: string
+          synced_at: string
+          tasks_detail: Json | null
+          total_hours: number
+        }
+        Insert: {
+          auvo_user_id: number
+          employee_id: string
+          id?: string
+          month_key: string
+          synced_at?: string
+          tasks_detail?: Json | null
+          total_hours?: number
+        }
+        Update: {
+          auvo_user_id?: number
+          employee_id?: string
+          id?: string
+          month_key?: string
+          synced_at?: string
+          tasks_detail?: Json | null
+          total_hours?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "auvo_hours_cache_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      auvo_sync_log: {
+        Row: {
+          employees_count: number
+          errors: Json | null
+          finished_at: string | null
+          id: string
+          month_key: string
+          started_at: string
+          status: string
+          tasks_count: number
+        }
+        Insert: {
+          employees_count?: number
+          errors?: Json | null
+          finished_at?: string | null
+          id?: string
+          month_key: string
+          started_at?: string
+          status?: string
+          tasks_count?: number
+        }
+        Update: {
+          employees_count?: number
+          errors?: Json | null
+          finished_at?: string | null
+          id?: string
+          month_key?: string
+          started_at?: string
+          status?: string
+          tasks_count?: number
+        }
+        Relationships: []
+      }
+      auvo_task_cache: {
+        Row: {
+          auvo_task_id: number
+          cached_at: string
+          data: Json
+          id: string
+          os_number: string
+        }
+        Insert: {
+          auvo_task_id: number
+          cached_at?: string
+          data?: Json
+          id?: string
+          os_number?: string
+        }
+        Update: {
+          auvo_task_id?: number
+          cached_at?: string
+          data?: Json
+          id?: string
+          os_number?: string
+        }
+        Relationships: []
+      }
+      auvo_user_mapping: {
+        Row: {
+          auvo_user_id: number
+          auvo_user_name: string
+          created_at: string
+          employee_id: string
+          id: string
+        }
+        Insert: {
+          auvo_user_id: number
+          auvo_user_name?: string
+          created_at?: string
+          employee_id: string
+          id?: string
+        }
+        Update: {
+          auvo_user_id?: number
+          auvo_user_name?: string
+          created_at?: string
+          employee_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "auvo_user_mapping_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: true
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       config: {
         Row: {
           bonus_cap: number
