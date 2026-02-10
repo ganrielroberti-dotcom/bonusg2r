@@ -1,1 +1,7 @@
 project_id = "uzzuanrudlzxwzxqakgv"
+
+[functions.auvo-proxy]
+verify_jwt = false
+
+[functions.auvo-hours-sync]
+verify_jwt = false

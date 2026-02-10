@@ -100,5 +100,5 @@ export interface BonusCamadas {
   horasEsperadas: number;
 }
 
-export type TabType = 'os' | 'colaboradores' | 'config';
+export type TabType = 'os' | 'colaboradores' | 'config' | 'horasAuvo';
 export type SortType = 'data_desc' | 'data_asc' | 'score_desc' | 'score_asc' | 'ceq_desc' | 'ceq_asc';
