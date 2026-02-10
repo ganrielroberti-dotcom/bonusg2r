@@ -221,10 +221,10 @@ Deno.serve(async (req: Request) => {
     const fmtDate = (d: Date) =>
       `${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")}/${d.getFullYear()}`;
 
-    // Previous month bounds for cross-month task fetching
+    // Lookback window for cross-month task fetching (3 months back)
+    // Tasks can be scheduled months in advance but worked on later
     const [pYear, pMonth] = monthKey.split("-").map(Number);
-    const prevMonthDate = new Date(Date.UTC(pYear, pMonth - 2, 1));
-    const prevMonthStart = new Date(Date.UTC(prevMonthDate.getUTCFullYear(), prevMonthDate.getUTCMonth(), 1, -SAO_PAULO_OFFSET, 0, 0));
+    const lookbackStart = new Date(Date.UTC(pYear, pMonth - 4, 1, -SAO_PAULO_OFFSET, 0, 0));
 
     // Helper to fetch all pages of tasks for a user within a date range
     async function fetchAllTasks(userId: number, startDate: Date, endDate: Date): Promise<TaskData[]> {
@@ -253,21 +253,33 @@ Deno.serve(async (req: Request) => {
         // Fetch tasks from the current month
         const currentMonthTasks = await fetchAllTasks(mapping.auvo_user_id, monthStart, monthEnd);
 
-        // Fetch tasks from previous month that might still be active (cross-month)
-        const prevMonthTasks = await fetchAllTasks(mapping.auvo_user_id, prevMonthStart, monthStart);
+        // Fetch tasks from lookback window (6 months) that might have activity in current month
+        const prevTasks = await fetchAllTasks(mapping.auvo_user_id, lookbackStart, monthStart);
 
-        // Filter prev month tasks: only include those with activity in current month
-        // (active/paused without checkout, or checkout falls within current month)
-        const crossMonthTasks = prevMonthTasks.filter((t) => {
+        // Filter prev tasks: only include those with activity in current month
+        // For tasks from more than 1 month back, only include completed tasks with checkout in current month
+        const oneMonthBack = new Date(Date.UTC(pYear, pMonth - 2, 1, -SAO_PAULO_OFFSET, 0, 0));
+        
+        const crossMonthTasks = prevTasks.filter((t) => {
           // Skip tasks already in current month results (by taskID)
           if (currentMonthTasks.some((ct) => ct.taskID === t.taskID)) return false;
-          // Active tasks (status 3) with checkIn before monthEnd — they have hours in current month
-          if (t.taskStatus === 3 && t.checkInDate) return true;
-          // Completed tasks whose checkout falls within current month
+          
+          const checkin = t.checkInDate ? new Date(t.checkInDate) : null;
+          const taskDate = checkin || new Date(0);
+          const isRecentTask = taskDate >= oneMonthBack; // from previous month only
+          
+          // Active tasks (status 3) — only include if from previous month (not older stale ones)
+          if (t.taskStatus === 3 && checkin && isRecentTask) return true;
+          
+          // Completed tasks whose checkout falls within current month (from any lookback period)
           if (t.checkOutDate) {
             const checkout = new Date(t.checkOutDate);
             return !isNaN(checkout.getTime()) && checkout > monthStart;
           }
+          
+          // Paused tasks (status 6) with checkIn in current month
+          if (t.taskStatus === 6 && checkin && checkin >= monthStart && checkin < monthEnd) return true;
+          
           return false;
         });
 
