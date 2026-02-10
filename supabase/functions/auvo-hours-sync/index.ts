@@ -194,20 +194,21 @@ Deno.serve(async (req: Request) => {
       .select("auvo_user_id, auvo_user_name, employee_id");
 
     if (!mappings || mappings.length === 0) {
-      // Update log
+      // No mappings yet — not an error, just nothing to do
       if (logId) {
         await supabase
           .from("auvo_sync_log")
           .update({
             finished_at: new Date().toISOString(),
-            status: "error",
+            status: "skipped",
             errors: [{ message: "No user mappings configured" }],
           })
           .eq("id", logId);
       }
+      console.log(`Sync ${monthKey}: skipped — no user mappings configured`);
       return new Response(
-        JSON.stringify({ error: "No user mappings configured" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ status: "skipped", message: "No user mappings configured", monthKey }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
