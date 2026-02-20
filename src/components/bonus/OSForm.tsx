@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { motion } from "framer-motion";
-import { Save, RotateCcw, Keyboard } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Save, RotateCcw, Keyboard, CalendarClock, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -36,6 +36,7 @@ export function OSForm({ editingOS, onClearEditing }: OSFormProps) {
   const [setor, setSetor] = useState("");
   const [obs, setObs] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [monthMovedInfo, setMonthMovedInfo] = useState<{ from: string; to: string; activityDate: string } | null>(null);
   const [critValues, setCritValues] = useState<Record<string, number>>(() => {
     const initial: Record<string, number> = {};
     CRITERIA.forEach((c) => (initial[c.id] = 0));
@@ -73,6 +74,7 @@ export function OSForm({ editingOS, onClearEditing }: OSFormProps) {
     setValorOs("");
     setSetor("");
     setObs("");
+    setMonthMovedInfo(null);
     const initial: Record<string, number> = {};
     CRITERIA.forEach((c) => (initial[c.id] = 0));
     setCritValues(initial);
@@ -196,6 +198,39 @@ export function OSForm({ editingOS, onClearEditing }: OSFormProps) {
                 if (data.descricao) {
                   setObs((prev) => prev ? prev : data.descricao);
                 }
+
+                // Determine month based on last activity (Opção A)
+                let activityMonthKey: string | null = null;
+                let activityDateFormatted = "";
+                if (data.taskStatus === 3) {
+                  // Task still in progress — use current month
+                  activityMonthKey = new Date().toISOString().slice(0, 7);
+                  activityDateFormatted = "em andamento (agora)";
+                } else if (data.lastActivityDate) {
+                  try {
+                    const actDate = new Date(data.lastActivityDate);
+                    if (!isNaN(actDate.getTime())) {
+                      activityMonthKey = actDate.toISOString().slice(0, 7);
+                      activityDateFormatted = actDate.toLocaleDateString("pt-BR");
+                    }
+                  } catch { /* fallback to date-based */ }
+                }
+
+                const originalMonthKey = data.date ? monthKeyFromDate(data.date) : monthKey;
+
+                if (activityMonthKey && activityMonthKey !== originalMonthKey) {
+                  // Month changed — switch and show warning
+                  setMonthKey(activityMonthKey);
+                  setMonthMovedInfo({
+                    from: originalMonthKey || monthKey,
+                    to: activityMonthKey,
+                    activityDate: activityDateFormatted,
+                  });
+                  toast.info(`Mês ajustado para ${activityMonthKey} (última atividade: ${activityDateFormatted})`);
+                } else {
+                  setMonthMovedInfo(null);
+                }
+
                 // Auto-select employee by tecnicoName
                 if (data.tecnicoName) {
                   const tecLower = data.tecnicoName.toLowerCase();
@@ -224,6 +259,28 @@ export function OSForm({ editingOS, onClearEditing }: OSFormProps) {
           />
         </div>
       </div>
+
+      {/* Month moved warning */}
+      <AnimatePresence>
+        {monthMovedInfo && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="flex items-start gap-3 p-3 rounded-lg bg-primary/10 border border-primary/30 text-sm"
+          >
+            <CalendarClock className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+            <div>
+              <p className="font-medium text-primary">Mês ajustado automaticamente</p>
+              <p className="text-muted-foreground text-xs mt-0.5">
+                A OS foi aberta em <strong>{monthMovedInfo.from}</strong>, mas a última atividade no Auvo foi em{" "}
+                <strong>{monthMovedInfo.activityDate}</strong>. O lançamento será contabilizado em{" "}
+                <strong>{monthMovedInfo.to}</strong>.
+              </p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="space-y-1.5">

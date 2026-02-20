@@ -23,6 +23,8 @@ interface AuvoOSLookupProps {
     descricao: string;
     tecnicoName: string;
     tecnicoAuvoId: number;
+    lastActivityDate: string | null;
+    taskStatus: number;
   }) => void;
 }
 
@@ -60,6 +62,9 @@ export function AuvoOSLookup({ osNumber, onDataPulled }: AuvoOSLookupProps) {
       } catch { /* keep empty */ }
     }
 
+    // Determine last activity date: checkOutDate > checkInDate > taskDate
+    const lastActivityDate = foundTask.checkOutDate || foundTask.checkInDate || null;
+
     onDataPulled({
       osId: foundTask.externalId || String(foundTask.taskID),
       cliente: foundTask.customerDescription || "",
@@ -68,6 +73,8 @@ export function AuvoOSLookup({ osNumber, onDataPulled }: AuvoOSLookupProps) {
       descricao: foundTask.orientation || "",
       tecnicoName: foundTask.userToName || "",
       tecnicoAuvoId: foundTask.idUserTo,
+      lastActivityDate,
+      taskStatus: foundTask.taskStatus,
     });
 
     setShowDialog(false);
