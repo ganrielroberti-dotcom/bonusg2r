@@ -15,6 +15,8 @@ export interface AuvoTask {
   taskStatus: number; // 1=Opened, 2=InDisplacement, 3=CheckedIn, 4=CheckedOut, 5=Finished, 6=Paused
   duration: string | null;
   durationDecimal: string | null;
+  orientation: string | null;
+  description: string | null;
 }
 
 export interface AuvoUser {

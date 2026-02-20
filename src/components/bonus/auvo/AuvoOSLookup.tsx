@@ -65,7 +65,7 @@ export function AuvoOSLookup({ osNumber, onDataPulled }: AuvoOSLookupProps) {
       cliente: foundTask.customerDescription || "",
       date: dateISO,
       tipo: foundTask.taskTypeDescription || "",
-      descricao: (foundTask as any).orientation || "",
+      descricao: foundTask.orientation || "",
       tecnicoName: foundTask.userToName || "",
       tecnicoAuvoId: foundTask.idUserTo,
     });
@@ -131,7 +131,7 @@ export function AuvoOSLookup({ osNumber, onDataPulled }: AuvoOSLookupProps) {
                 </div>
                 <div>
                   <span className="text-muted-foreground">Orientação:</span>
-                  <p className="font-medium text-xs truncate">{(foundTask as any).orientation || "—"}</p>
+                  <p className="font-medium text-xs truncate">{foundTask.orientation || "—"}</p>
                 </div>
               </div>
             </div>

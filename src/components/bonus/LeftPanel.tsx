@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { motion } from "framer-motion";
 import { Calendar, User, LogOut } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -8,11 +9,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useBonus } from "@/contexts/BonusContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { TabsNavigation } from "./TabsNavigation";
-import { OSForm } from "./OSForm";
-import { EmployeesTab } from "./EmployeesTab";
-import { ConfigTab } from "./ConfigTab";
-import { AuvoHoursReport } from "./auvo/AuvoHoursReport";
 import { OSRecord } from "@/types/bonus";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { TabErrorFallback } from "./TabErrorFallback";
+import { TabSkeleton } from "./TabSkeleton";
+
+// Lazy load heavy tab components
+const OSForm = lazy(() => import("./OSForm").then(m => ({ default: m.OSForm })));
+const EmployeesTab = lazy(() => import("./EmployeesTab").then(m => ({ default: m.EmployeesTab })));
+const ConfigTab = lazy(() => import("./ConfigTab").then(m => ({ default: m.ConfigTab })));
+const AuvoHoursReport = lazy(() => import("./auvo/AuvoHoursReport").then(m => ({ default: m.AuvoHoursReport })));
 
 interface LeftPanelProps {
   editingOS: OSRecord | null;
@@ -61,7 +67,7 @@ export function LeftPanel({ editingOS, onClearEditing }: LeftPanelProps) {
         </Button>
       </div>
 
-      {/* Top bar with tabs - only show full tabs for gestor */}
+      {/* Top bar with tabs */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <TabsNavigation activeTab={activeTab} onTabChange={setActiveTab} isGestor={isGestor} />
       </div>
@@ -104,18 +110,40 @@ export function LeftPanel({ editingOS, onClearEditing }: LeftPanelProps) {
 
       <div className="h-px bg-border" />
 
-      {/* Tab content */}
+      {/* Tab content with lazy loading and error boundaries */}
       {activeTab === "os" && isGestor && (
-        <OSForm editingOS={editingOS} onClearEditing={onClearEditing} />
+        <ErrorBoundary fallback={<TabErrorFallback tabName="Formulário OS" onRetry={() => window.location.reload()} />}>
+          <Suspense fallback={<TabSkeleton variant="form" />}>
+            <OSForm editingOS={editingOS} onClearEditing={onClearEditing} />
+          </Suspense>
+        </ErrorBoundary>
       )}
       {activeTab === "os" && !isGestor && (
         <div className="text-center py-8 text-muted-foreground">
           Visualização de OS apenas. Use a área à direita para ver suas OS.
         </div>
       )}
-      {activeTab === "colaboradores" && <EmployeesTab />}
-      {activeTab === "horasAuvo" && <AuvoHoursReport />}
-      {activeTab === "config" && <ConfigTab />}
+      {activeTab === "colaboradores" && (
+        <ErrorBoundary fallback={<TabErrorFallback tabName="Colaboradores" onRetry={() => window.location.reload()} />}>
+          <Suspense fallback={<TabSkeleton variant="list" />}>
+            <EmployeesTab />
+          </Suspense>
+        </ErrorBoundary>
+      )}
+      {activeTab === "horasAuvo" && (
+        <ErrorBoundary fallback={<TabErrorFallback tabName="Horas Auvo" onRetry={() => window.location.reload()} />}>
+          <Suspense fallback={<TabSkeleton variant="report" />}>
+            <AuvoHoursReport />
+          </Suspense>
+        </ErrorBoundary>
+      )}
+      {activeTab === "config" && (
+        <ErrorBoundary fallback={<TabErrorFallback tabName="Configurações" onRetry={() => window.location.reload()} />}>
+          <Suspense fallback={<TabSkeleton variant="config" />}>
+            <ConfigTab />
+          </Suspense>
+        </ErrorBoundary>
+      )}
     </motion.section>
   );
 }

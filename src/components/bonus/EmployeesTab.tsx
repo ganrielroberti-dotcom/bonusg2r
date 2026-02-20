@@ -165,7 +165,7 @@ export function EmployeesTab() {
                       )}
                     </div>
                     {"email" in emp && (
-                      <span className="text-xs text-muted-foreground/70">{(emp as any).email}</span>
+                      <span className="text-xs text-muted-foreground/70">{(emp as Record<string, unknown>).email as string}</span>
                     )}
                   </div>
 
