@@ -20,6 +20,7 @@ interface AuvoOSLookupProps {
     cliente: string;
     date: string;
     tipo: string;
+    descricao: string;
     tecnicoName: string;
     tecnicoAuvoId: number;
   }) => void;
@@ -64,6 +65,7 @@ export function AuvoOSLookup({ osNumber, onDataPulled }: AuvoOSLookupProps) {
       cliente: foundTask.customerDescription || "",
       date: dateISO,
       tipo: foundTask.taskTypeDescription || "",
+      descricao: (foundTask as any).description || "",
       tecnicoName: foundTask.userToName || "",
       tecnicoAuvoId: foundTask.idUserTo,
     });
@@ -123,9 +125,13 @@ export function AuvoOSLookup({ osNumber, onDataPulled }: AuvoOSLookupProps) {
                   <span className="text-muted-foreground">Tipo:</span>
                   <p className="font-medium">{foundTask.taskTypeDescription || "—"}</p>
                 </div>
-                <div className="col-span-2">
+                <div>
                   <span className="text-muted-foreground">Técnico:</span>
                   <p className="font-medium">{foundTask.userToName || "—"}</p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Descrição:</span>
+                  <p className="font-medium text-xs truncate">{(foundTask as any).description || "—"}</p>
                 </div>
               </div>
             </div>

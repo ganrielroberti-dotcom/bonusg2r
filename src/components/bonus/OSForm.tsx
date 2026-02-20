@@ -186,6 +186,29 @@ export function OSForm({ editingOS, onClearEditing }: OSFormProps) {
                 setOsId(data.osId);
                 setCliente(data.cliente);
                 if (data.date) setDate(data.date);
+                // Auto-set tipo by matching Auvo taskTypeDescription to OS_TYPES
+                if (data.tipo) {
+                  const tipoLower = data.tipo.toLowerCase();
+                  const matched = OS_TYPES.find((t) => tipoLower.includes(t.label.toLowerCase()));
+                  setTipo(matched ? matched.value : "outros");
+                }
+                // Auto-set descrição in obs
+                if (data.descricao) {
+                  setObs((prev) => prev ? prev : data.descricao);
+                }
+                // Auto-select employee by tecnicoName
+                if (data.tecnicoName) {
+                  const tecLower = data.tecnicoName.toLowerCase();
+                  const emp = db.employees.find((e) => 
+                    e.name.toLowerCase().includes(tecLower) || tecLower.includes(e.name.toLowerCase())
+                  );
+                  if (emp) {
+                    setSelectedEmployeeId(emp.id);
+                    toast.info(`Técnico "${data.tecnicoName}" vinculado a ${emp.name}`);
+                  } else {
+                    toast.warning(`Técnico "${data.tecnicoName}" não encontrado nos colaboradores`);
+                  }
+                }
               }}
             />
           </div>
