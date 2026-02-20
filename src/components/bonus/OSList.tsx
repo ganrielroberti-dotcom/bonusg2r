@@ -25,6 +25,7 @@ export function OSList({ onEdit }: OSListProps) {
   const { isGestor } = useAuth();
   const [filterTec, setFilterTec] = useState("");
   const [filterCliente, setFilterCliente] = useState("");
+  const [filterOS, setFilterOS] = useState("");
   const [sortBy, setSortBy] = useState<SortType>("data_desc");
   const [deleteTarget, setDeleteTarget] = useState<OSRecord | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -33,6 +34,10 @@ export function OSList({ onEdit }: OSListProps) {
     let list = getMonthOSList();
 
     // Apply filters
+    if (filterOS.trim()) {
+      const term = filterOS.toLowerCase();
+      list = list.filter((r) => r.osId.toLowerCase().includes(term));
+    }
     if (filterTec.trim()) {
       const term = filterTec.toLowerCase();
       list = list.filter((r) => r.employeeName.toLowerCase().includes(term));
@@ -61,7 +66,7 @@ export function OSList({ onEdit }: OSListProps) {
     });
 
     return list;
-  }, [getMonthOSList, filterTec, filterCliente, sortBy]);
+  }, [getMonthOSList, filterOS, filterTec, filterCliente, sortBy]);
 
   // Pagination
   const {
@@ -106,11 +111,23 @@ export function OSList({ onEdit }: OSListProps) {
   return (
     <div className="space-y-4">
       {/* Filters */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
         <div className="space-y-1.5">
           <Label className="flex items-center gap-1.5">
             <Search className="w-3.5 h-3.5" />
-            Filtrar por técnico
+            Num. OS
+          </Label>
+          <Input
+            value={filterOS}
+            onChange={(e) => setFilterOS(e.target.value)}
+            placeholder="Ex.: OS-2026..."
+            className="input-focus-ring"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label className="flex items-center gap-1.5">
+            <Search className="w-3.5 h-3.5" />
+            Técnico
           </Label>
           <Input
             value={filterTec}
@@ -122,7 +139,7 @@ export function OSList({ onEdit }: OSListProps) {
         <div className="space-y-1.5">
           <Label className="flex items-center gap-1.5">
             <Search className="w-3.5 h-3.5" />
-            Filtrar por cliente
+            Cliente
           </Label>
           <Input
             value={filterCliente}
