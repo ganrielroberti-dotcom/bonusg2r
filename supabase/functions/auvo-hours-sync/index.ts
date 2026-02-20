@@ -1,4 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { auvoFetch } from "../_shared/auvo-auth.ts";
+import { TaskData, getMonthBounds, calculateTaskHours, SAO_PAULO_OFFSET } from "../_shared/auvo-calculations.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -6,161 +8,130 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const AUVO_BASE = "https://api.auvo.com.br/v2";
-const TOKEN_TTL_MS = 25 * 60 * 1000;
-const SAO_PAULO_OFFSET = -3; // UTC-3 (simplified, DST not applicable since 2019)
+const PAGE_SIZE = 50;
 
-let cachedToken: string | null = null;
-let tokenExpiry = 0;
-
-async function getAuvoToken(): Promise<string> {
-  if (cachedToken && Date.now() < tokenExpiry) return cachedToken;
-
-  const apiKey = Deno.env.get("AUVO_API_KEY");
-  const apiToken = Deno.env.get("AUVO_API_TOKEN");
-  if (!apiKey || !apiToken) throw new Error("AUVO credentials not configured");
-
-  const res = await fetch(
-    `${AUVO_BASE}/login/?apiKey=${encodeURIComponent(apiKey)}&apiToken=${encodeURIComponent(apiToken)}`
-  );
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`Auvo login failed [${res.status}]: ${text}`);
-  }
-  const data = await res.json();
-  const token = data?.result?.accessToken;
-  if (!token) throw new Error("No accessToken");
-  cachedToken = token;
-  tokenExpiry = Date.now() + TOKEN_TTL_MS;
-  return token;
+function fmtDate(d: Date): string {
+  return `${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")}/${d.getFullYear()}`;
 }
 
-async function auvoFetch(path: string, retries = 2): Promise<unknown> {
-  const token = await getAuvoToken();
-  for (let attempt = 0; attempt <= retries; attempt++) {
-    const res = await fetch(`${AUVO_BASE}${path}`, {
-      headers: { Authorization: `Bearer ${token}` },
+async function fetchAllTasks(userId: number, startDate: Date, endDate: Date): Promise<TaskData[]> {
+  const tasks: TaskData[] = [];
+  let page = 1;
+  const maxPages = 50;
+  while (page <= maxPages) {
+    const filter = JSON.stringify({
+      startDate: fmtDate(startDate),
+      endDate: fmtDate(endDate),
+      idUserTo: userId,
     });
-    if (res.status === 429) {
-      await new Promise((r) => setTimeout(r, Math.pow(2, attempt + 1) * 1000));
-      continue;
-    }
-    if (!res.ok) {
-      const text = await res.text();
-      throw new Error(`Auvo [${res.status}] ${path}: ${text}`);
-    }
-    return await res.json();
+    const raw = (await auvoFetch(
+      `/tasks/?paramFilter=${encodeURIComponent(filter)}&page=${page}&pageSize=${PAGE_SIZE}&order=asc`
+    )) as { result: { entityList?: TaskData[]; content?: TaskData[]; pagedSearchReturnData?: { totalPages?: number }; totalPages?: number } };
+    const content = raw?.result?.entityList || raw?.result?.content || [];
+    tasks.push(...content);
+
+    if (content.length === 0) break;
+    const totalPages = raw?.result?.pagedSearchReturnData?.totalPages || raw?.result?.totalPages || 1;
+    if (page >= totalPages && content.length < PAGE_SIZE) break;
+    page++;
   }
-  throw new Error(`Max retries for ${path}`);
+  return tasks;
 }
 
-function getMonthBounds(monthKey: string): { start: Date; end: Date } {
-  const [year, month] = monthKey.split("-").map(Number);
-  // Month boundaries in São Paulo time, converted to UTC
-  const start = new Date(Date.UTC(year, month - 1, 1, -SAO_PAULO_OFFSET, 0, 0));
-  const end = new Date(Date.UTC(year, month, 1, -SAO_PAULO_OFFSET, 0, 0));
-  return { start, end };
+function filterCrossMonthTasks(
+  prevTasks: TaskData[],
+  currentMonthTasks: TaskData[],
+  monthStart: Date,
+  oneMonthBack: Date
+): TaskData[] {
+  return prevTasks.filter((t) => {
+    if (currentMonthTasks.some((ct) => ct.taskID === t.taskID)) return false;
+
+    const checkin = t.checkInDate ? new Date(t.checkInDate) : null;
+    const taskDate = checkin || new Date(0);
+    const isRecentTask = taskDate >= oneMonthBack;
+
+    if (t.taskStatus === 3 && checkin && isRecentTask) return true;
+
+    if (t.checkOutDate) {
+      const checkout = new Date(t.checkOutDate);
+      return !isNaN(checkout.getTime()) && checkout > monthStart;
+    }
+
+    if (t.taskStatus === 6 && checkin && isRecentTask && t.durationDecimal) return true;
+
+    return false;
+  });
 }
 
-interface TaskData {
-  taskID: number;
-  externalId: string;
-  customerDescription: string;
-  checkInDate: string | null;
-  checkOutDate: string | null;
-  taskStatus: number;
-  duration: string | null;
-  durationDecimal: string | null;
-  idUserTo: number;
-}
-
-function calculateTaskHours(
-  task: TaskData,
+async function processEmployee(
+  supabase: ReturnType<typeof createClient>,
+  mapping: { auvo_user_id: number; employee_id: string },
+  monthKey: string,
   monthStart: Date,
   monthEnd: Date,
+  lookbackStart: Date,
+  oneMonthBack: Date,
   now: Date
-): { hours: number; calculation: string } {
-  const { checkInDate, checkOutDate, taskStatus, durationDecimal } = task;
+): Promise<{ tasksProcessed: number }> {
+  const currentMonthTasks = await fetchAllTasks(mapping.auvo_user_id, monthStart, monthEnd);
+  const prevTasks = await fetchAllTasks(mapping.auvo_user_id, lookbackStart, monthStart);
+  const crossMonthTasks = filterCrossMonthTasks(prevTasks, currentMonthTasks, monthStart, oneMonthBack);
+  const allTasks = [...currentMonthTasks, ...crossMonthTasks];
 
-  if (!checkInDate) {
-    return { hours: 0, calculation: "No check-in date" };
+  let totalHours = 0;
+  const tasksDetail: unknown[] = [];
+
+  for (const task of allTasks) {
+    const { hours, calculation } = calculateTaskHours(task, monthStart, monthEnd, now);
+    totalHours += hours;
+    tasksDetail.push({
+      taskID: task.taskID,
+      externalId: task.externalId || "",
+      customerDescription: task.customerDescription || "",
+      checkInDate: task.checkInDate,
+      checkOutDate: task.checkOutDate,
+      taskStatus: task.taskStatus,
+      durationDecimal: task.durationDecimal,
+      calculatedHours: hours,
+      calculation,
+    });
   }
 
-  const checkin = new Date(checkInDate);
-  if (isNaN(checkin.getTime())) {
-    return { hours: 0, calculation: "Invalid check-in date" };
-  }
+  totalHours = Math.round(totalHours * 100) / 100;
 
-  // For paused tasks (status 6), use durationDecimal if available
-  if (taskStatus === 6 && durationDecimal) {
-    const dec = parseFloat(durationDecimal);
-    if (!isNaN(dec) && dec > 0) {
-      // Clip: only count if checkin is within month window
-      if (checkin >= monthEnd) return { hours: 0, calculation: "Paused task outside month" };
-      return {
-        hours: Math.round(dec * 100) / 100,
-        calculation: `Paused: using durationDecimal=${dec}h`,
-      };
-    }
-  }
+  // Upsert into auvo_hours_cache
+  await supabase.from("auvo_hours_cache").upsert(
+    {
+      month_key: monthKey,
+      employee_id: mapping.employee_id,
+      auvo_user_id: mapping.auvo_user_id,
+      total_hours: totalHours,
+      tasks_detail: tasksDetail,
+      synced_at: new Date().toISOString(),
+    },
+    { onConflict: "month_key,employee_id" }
+  );
 
-  // For completed tasks (status 4/5) with durationDecimal, prefer it (Auvo deducts pauses)
-  if ((taskStatus === 4 || taskStatus === 5) && durationDecimal) {
-    const dec = parseFloat(durationDecimal);
-    if (!isNaN(dec) && dec > 0) {
-      // Still need to clip to month window for cross-month tasks
-      const checkout = checkOutDate ? new Date(checkOutDate) : null;
-      if (checkout && !isNaN(checkout.getTime())) {
-        // If entire task is outside month, skip
-        if (checkout <= monthStart || checkin >= monthEnd) {
-          return { hours: 0, calculation: "Completed task outside month window" };
-        }
-        // If task spans across month boundary, we can't just use durationDecimal
-        // because it represents total duration. We need to ratio it.
-        if (checkin < monthStart || checkout > monthEnd) {
-          const totalMs = checkout.getTime() - checkin.getTime();
-          if (totalMs <= 0) return { hours: dec, calculation: `durationDecimal=${dec}h (no clip needed)` };
-          const clipStart = Math.max(checkin.getTime(), monthStart.getTime());
-          const clipEnd = Math.min(checkout.getTime(), monthEnd.getTime());
-          const ratio = Math.max(0, clipEnd - clipStart) / totalMs;
-          const clipped = Math.round(dec * ratio * 100) / 100;
-          return {
-            hours: clipped,
-            calculation: `durationDecimal=${dec}h * ratio=${ratio.toFixed(3)} = ${clipped}h (cross-month)`,
-          };
-        }
-      }
-      return { hours: dec, calculation: `durationDecimal=${dec}h` };
-    }
-  }
+  // Upsert into horas_trabalhadas
+  const { data: existing } = await supabase
+    .from("horas_trabalhadas")
+    .select("id")
+    .eq("employee_id", mapping.employee_id)
+    .eq("month_key", monthKey)
+    .maybeSingle();
 
-  // Fallback: use checkIn/checkOut or checkIn/now
-  const ini = new Date(Math.max(checkin.getTime(), monthStart.getTime()));
-
-  let fim: Date;
-  if (checkOutDate) {
-    const checkout = new Date(checkOutDate);
-    if (isNaN(checkout.getTime())) {
-      return { hours: 0, calculation: "Invalid checkout date" };
-    }
-    fim = new Date(Math.min(checkout.getTime(), monthEnd.getTime()));
-  } else if (taskStatus === 3) {
-    // CheckedIn, still working
-    fim = new Date(Math.min(now.getTime(), monthEnd.getTime()));
-  } else if (taskStatus === 6) {
-    // Paused without durationDecimal
-    return { hours: 0, calculation: "Paused without durationDecimal (conservative: 0h)" };
+  if (existing) {
+    await supabase.from("horas_trabalhadas").update({ horas: totalHours }).eq("id", existing.id);
   } else {
-    // Other statuses without checkout
-    return { hours: 0, calculation: `Status ${taskStatus} without checkout` };
+    await supabase.from("horas_trabalhadas").insert({
+      employee_id: mapping.employee_id,
+      month_key: monthKey,
+      horas: totalHours,
+    });
   }
 
-  const diffMs = Math.max(0, fim.getTime() - ini.getTime());
-  const hours = Math.round((diffMs / 3600000) * 100) / 100;
-  return {
-    hours,
-    calculation: `${ini.toISOString()} to ${fim.toISOString()} = ${hours}h`,
-  };
+  return { tasksProcessed: allTasks.length };
 }
 
 Deno.serve(async (req: Request) => {
@@ -194,7 +165,6 @@ Deno.serve(async (req: Request) => {
       .select("auvo_user_id, auvo_user_name, employee_id");
 
     if (!mappings || mappings.length === 0) {
-      // No mappings yet — not an error, just nothing to do
       if (logId) {
         await supabase
           .from("auvo_sync_log")
@@ -217,138 +187,16 @@ Deno.serve(async (req: Request) => {
     let totalTasksProcessed = 0;
     let employeesUpdated = 0;
 
-    // Format dates for Auvo API (MM/DD/YYYY)
-    const fmtDate = (d: Date) =>
-      `${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")}/${d.getFullYear()}`;
-
-    // Lookback window for cross-month task fetching (3 months back)
-    // Tasks can be scheduled months in advance but worked on later
     const [pYear, pMonth] = monthKey.split("-").map(Number);
     const lookbackStart = new Date(Date.UTC(pYear, pMonth - 4, 1, -SAO_PAULO_OFFSET, 0, 0));
-
-    // Helper to fetch all pages of tasks for a user within a date range
-    const PAGE_SIZE = 50; // Auvo API may cap at a lower size than requested
-    async function fetchAllTasks(userId: number, startDate: Date, endDate: Date): Promise<TaskData[]> {
-      const tasks: TaskData[] = [];
-      let page = 1;
-      const maxPages = 50; // safety limit
-      while (page <= maxPages) {
-        const filter = JSON.stringify({
-          startDate: fmtDate(startDate),
-          endDate: fmtDate(endDate),
-          idUserTo: userId,
-        });
-        const raw = (await auvoFetch(
-          `/tasks/?paramFilter=${encodeURIComponent(filter)}&page=${page}&pageSize=${PAGE_SIZE}&order=asc`
-        )) as { result: { entityList?: TaskData[]; content?: TaskData[]; pagedSearchReturnData?: { totalPages?: number }; totalPages?: number } };
-        const content = raw?.result?.entityList || raw?.result?.content || [];
-        tasks.push(...content);
-        
-        // Stop if: empty page, less items than page size, or totalPages says we're done
-        if (content.length === 0) break;
-        const totalPages = raw?.result?.pagedSearchReturnData?.totalPages || raw?.result?.totalPages || 1;
-        if (page >= totalPages && content.length < PAGE_SIZE) break;
-        page++;
-      }
-      return tasks;
-    }
+    const oneMonthBack = new Date(Date.UTC(pYear, pMonth - 2, 1, -SAO_PAULO_OFFSET, 0, 0));
 
     for (const mapping of mappings) {
       try {
-        // Fetch tasks from the current month
-        const currentMonthTasks = await fetchAllTasks(mapping.auvo_user_id, monthStart, monthEnd);
-
-        // Fetch tasks from lookback window (6 months) that might have activity in current month
-        const prevTasks = await fetchAllTasks(mapping.auvo_user_id, lookbackStart, monthStart);
-
-        // Filter prev tasks: only include those with activity in current month
-        // For tasks from more than 1 month back, only include completed tasks with checkout in current month
-        const oneMonthBack = new Date(Date.UTC(pYear, pMonth - 2, 1, -SAO_PAULO_OFFSET, 0, 0));
-        
-        const crossMonthTasks = prevTasks.filter((t) => {
-          // Skip tasks already in current month results (by taskID)
-          if (currentMonthTasks.some((ct) => ct.taskID === t.taskID)) return false;
-          
-          const checkin = t.checkInDate ? new Date(t.checkInDate) : null;
-          const taskDate = checkin || new Date(0);
-          const isRecentTask = taskDate >= oneMonthBack; // from previous month only
-          
-          // Active tasks (status 3) — only include if from previous month (not older stale ones)
-          if (t.taskStatus === 3 && checkin && isRecentTask) return true;
-          
-          // Completed tasks whose checkout falls within current month (from any lookback period)
-          if (t.checkOutDate) {
-            const checkout = new Date(t.checkOutDate);
-            return !isNaN(checkout.getTime()) && checkout > monthStart;
-          }
-          
-          // Paused tasks (status 6) from previous month with durationDecimal (work near month boundary)
-          if (t.taskStatus === 6 && checkin && isRecentTask && t.durationDecimal) return true;
-          
-          return false;
-        });
-
-        const allTasks = [...currentMonthTasks, ...crossMonthTasks];
-
-        // Calculate hours for each task
-        let totalHours = 0;
-        const tasksDetail: unknown[] = [];
-
-        for (const task of allTasks) {
-          const { hours, calculation } = calculateTaskHours(task, monthStart, monthEnd, now);
-          totalHours += hours;
-          tasksDetail.push({
-            taskID: task.taskID,
-            externalId: task.externalId || "",
-            customerDescription: task.customerDescription || "",
-            checkInDate: task.checkInDate,
-            checkOutDate: task.checkOutDate,
-            taskStatus: task.taskStatus,
-            durationDecimal: task.durationDecimal,
-            calculatedHours: hours,
-            calculation,
-          });
-        }
-
-        totalHours = Math.round(totalHours * 100) / 100;
-        totalTasksProcessed += allTasks.length;
-
-        // Upsert into auvo_hours_cache
-        await supabase.from("auvo_hours_cache").upsert(
-          {
-            month_key: monthKey,
-            employee_id: mapping.employee_id,
-            auvo_user_id: mapping.auvo_user_id,
-            total_hours: totalHours,
-            tasks_detail: tasksDetail,
-            synced_at: new Date().toISOString(),
-          },
-          { onConflict: "month_key,employee_id" }
+        const result = await processEmployee(
+          supabase, mapping, monthKey, monthStart, monthEnd, lookbackStart, oneMonthBack, now
         );
-
-        // Upsert into horas_trabalhadas (the main app table)
-        const { data: existing } = await supabase
-          .from("horas_trabalhadas")
-          .select("id")
-          .eq("employee_id", mapping.employee_id)
-          .eq("month_key", monthKey)
-          .maybeSingle();
-
-        if (existing) {
-          await supabase
-            .from("horas_trabalhadas")
-            .update({ horas: totalHours })
-            .eq("id", existing.id);
-        } else {
-          await supabase
-            .from("horas_trabalhadas")
-            .insert({
-              employee_id: mapping.employee_id,
-              month_key: monthKey,
-              horas: totalHours,
-            });
-        }
-
+        totalTasksProcessed += result.tasksProcessed;
         employeesUpdated++;
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : "Unknown error";
