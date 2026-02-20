@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Search, Loader2, Check, X } from "lucide-react";
+import { Search, Loader2, Check, X, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -110,38 +110,49 @@ export function AuvoOSLookup({ osNumber, onDataPulled }: AuvoOSLookupProps) {
           </DialogHeader>
 
           {foundTask && (
-            <div className="space-y-3 py-2">
-              <div className="grid grid-cols-2 gap-2 text-sm">
-                <div>
-                  <span className="text-muted-foreground">Número:</span>
-                  <p className="font-medium">{foundTask.externalId || foundTask.taskID}</p>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Cliente:</span>
-                  <p className="font-medium">{foundTask.customerDescription || "—"}</p>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Data:</span>
-                  <p className="font-medium">
-                    {foundTask.taskDate
-                      ? new Date(foundTask.taskDate).toLocaleDateString("pt-BR")
-                      : "—"}
-                  </p>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Tipo:</span>
-                  <p className="font-medium">{foundTask.taskTypeDescription || "—"}</p>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Técnico:</span>
-                  <p className="font-medium">{foundTask.userToName || "—"}</p>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Orientação:</span>
-                  <p className="font-medium text-xs truncate">{foundTask.orientation || "—"}</p>
+            <>
+              <div className="space-y-3 py-2">
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div>
+                    <span className="text-muted-foreground">Número:</span>
+                    <p className="font-medium">{foundTask.externalId || foundTask.taskID}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Cliente:</span>
+                    <p className="font-medium">{foundTask.customerDescription || "—"}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Data:</span>
+                    <p className="font-medium">
+                      {foundTask.taskDate
+                        ? new Date(foundTask.taskDate).toLocaleDateString("pt-BR")
+                        : "—"}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Tipo:</span>
+                    <p className="font-medium">{foundTask.taskTypeDescription || "—"}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Técnico:</span>
+                    <p className="font-medium">{foundTask.userToName || "—"}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Orientação:</span>
+                    <p className="font-medium text-xs truncate">{foundTask.orientation || "—"}</p>
+                  </div>
                 </div>
               </div>
-            </div>
+
+              {!foundTask.checkOutDate && (
+                <div className="flex items-start gap-2 p-2.5 rounded-md bg-accent border border-border text-xs">
+                  <AlertTriangle className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                  <p className="text-muted-foreground">
+                    Esta OS <strong>não possui checkout</strong>. O mês de referência pode mudar quando a atividade for finalizada no Auvo.
+                  </p>
+                </div>
+              )}
+            </>
           )}
 
           <DialogFooter className="gap-2">
