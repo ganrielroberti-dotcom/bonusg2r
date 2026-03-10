@@ -1,4 +1,4 @@
-import { Users, Settings, ClipboardList, Clock } from "lucide-react";
+import { Users, Settings, ClipboardList } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TabType } from "@/types/bonus";
 import { motion } from "framer-motion";
