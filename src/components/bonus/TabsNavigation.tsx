@@ -65,13 +65,6 @@ export function TabsNavigation({ activeTab, onTabChange, isGestor = true }: Tabs
             label="Colaboradores"
           />
           <TabButton
-            tab="horasAuvo"
-            activeTab={activeTab}
-            onClick={onTabChange}
-            icon={<Clock className="w-4 h-4" />}
-            label="Horas Auvo"
-          />
-          <TabButton
             tab="config"
             activeTab={activeTab}
             onClick={onTabChange}
