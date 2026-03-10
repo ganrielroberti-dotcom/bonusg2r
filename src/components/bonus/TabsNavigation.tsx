@@ -1,4 +1,4 @@
-import { Users, Settings, ClipboardList, Clock } from "lucide-react";
+import { Users, Settings, ClipboardList } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TabType } from "@/types/bonus";
 import { motion } from "framer-motion";
@@ -63,13 +63,6 @@ export function TabsNavigation({ activeTab, onTabChange, isGestor = true }: Tabs
             onClick={onTabChange}
             icon={<Users className="w-4 h-4" />}
             label="Colaboradores"
-          />
-          <TabButton
-            tab="horasAuvo"
-            activeTab={activeTab}
-            onClick={onTabChange}
-            icon={<Clock className="w-4 h-4" />}
-            label="Horas Auvo"
           />
           <TabButton
             tab="config"

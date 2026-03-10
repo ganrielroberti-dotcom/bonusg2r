@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { AuvoOSLookupResult, AuvoUserMapping, AuvoSyncLog, AuvoHoursCache, AuvoUser } from "@/types/auvo";
+import { AuvoOSLookupResult, AuvoUserMapping, AuvoUser } from "@/types/auvo";
 import { toast } from "sonner";
 
 const FUNCTION_BASE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
@@ -117,47 +117,3 @@ export function useAuvoMappings() {
   return { mappings, isLoading, fetchMappings, addMapping, removeMapping };
 }
 
-export function useAuvoSync() {
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [lastSync, setLastSync] = useState<AuvoSyncLog | null>(null);
-  const [hoursCache, setHoursCache] = useState<AuvoHoursCache[]>([]);
-
-  const triggerSync = useCallback(async (monthKey: string) => {
-    setIsSyncing(true);
-    try {
-      const result = await callEdgeFunction("auvo-hours-sync", "", { monthKey });
-      toast.success(
-        `Sincronização concluída: ${result.employeesUpdated} colaboradores, ${result.tasksProcessed} tasks`
-      );
-      return result;
-    } catch (err) {
-      console.error("Sync error:", err);
-      toast.error("Erro na sincronização: " + (err instanceof Error ? err.message : "desconhecido"));
-      return null;
-    } finally {
-      setIsSyncing(false);
-    }
-  }, []);
-
-  const fetchLastSync = useCallback(async (monthKey: string) => {
-    const { data } = await supabase
-      .from("auvo_sync_log")
-      .select("*")
-      .eq("month_key", monthKey)
-      .order("started_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    setLastSync(data as unknown as AuvoSyncLog | null);
-  }, []);
-
-  const fetchHoursCache = useCallback(async (monthKey: string) => {
-    const { data } = await supabase
-      .from("auvo_hours_cache")
-      .select("*")
-      .eq("month_key", monthKey)
-      .order("total_hours", { ascending: false });
-    setHoursCache((data || []) as unknown as AuvoHoursCache[]);
-  }, []);
-
-  return { isSyncing, lastSync, hoursCache, triggerSync, fetchLastSync, fetchHoursCache };
-}

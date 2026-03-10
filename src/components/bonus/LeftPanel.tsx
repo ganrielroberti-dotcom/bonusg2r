@@ -18,7 +18,7 @@ import { TabSkeleton } from "./TabSkeleton";
 const OSForm = lazy(() => import("./OSForm").then(m => ({ default: m.OSForm })));
 const EmployeesTab = lazy(() => import("./EmployeesTab").then(m => ({ default: m.EmployeesTab })));
 const ConfigTab = lazy(() => import("./ConfigTab").then(m => ({ default: m.ConfigTab })));
-const AuvoHoursReport = lazy(() => import("./auvo/AuvoHoursReport").then(m => ({ default: m.AuvoHoursReport })));
+
 
 interface LeftPanelProps {
   editingOS: OSRecord | null;
@@ -127,13 +127,6 @@ export function LeftPanel({ editingOS, onClearEditing }: LeftPanelProps) {
         <ErrorBoundary fallback={<TabErrorFallback tabName="Colaboradores" onRetry={() => window.location.reload()} />}>
           <Suspense fallback={<TabSkeleton variant="list" />}>
             <EmployeesTab />
-          </Suspense>
-        </ErrorBoundary>
-      )}
-      {activeTab === "horasAuvo" && (
-        <ErrorBoundary fallback={<TabErrorFallback tabName="Horas Auvo" onRetry={() => window.location.reload()} />}>
-          <Suspense fallback={<TabSkeleton variant="report" />}>
-            <AuvoHoursReport />
           </Suspense>
         </ErrorBoundary>
       )}
