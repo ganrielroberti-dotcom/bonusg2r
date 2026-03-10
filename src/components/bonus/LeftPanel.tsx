@@ -130,13 +130,6 @@ export function LeftPanel({ editingOS, onClearEditing }: LeftPanelProps) {
           </Suspense>
         </ErrorBoundary>
       )}
-      {activeTab === "horasAuvo" && (
-        <ErrorBoundary fallback={<TabErrorFallback tabName="Horas Auvo" onRetry={() => window.location.reload()} />}>
-          <Suspense fallback={<TabSkeleton variant="report" />}>
-            <AuvoHoursReport />
-          </Suspense>
-        </ErrorBoundary>
-      )}
       {activeTab === "config" && (
         <ErrorBoundary fallback={<TabErrorFallback tabName="Configurações" onRetry={() => window.location.reload()} />}>
           <Suspense fallback={<TabSkeleton variant="config" />}>

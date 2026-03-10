@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { AuvoOSLookupResult, AuvoUserMapping, AuvoSyncLog, AuvoHoursCache, AuvoUser } from "@/types/auvo";
+import { AuvoOSLookupResult, AuvoUserMapping, AuvoUser } from "@/types/auvo";
 import { toast } from "sonner";
 
 const FUNCTION_BASE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
