@@ -18,7 +18,7 @@ import { TabSkeleton } from "./TabSkeleton";
 const OSForm = lazy(() => import("./OSForm").then(m => ({ default: m.OSForm })));
 const EmployeesTab = lazy(() => import("./EmployeesTab").then(m => ({ default: m.EmployeesTab })));
 const ConfigTab = lazy(() => import("./ConfigTab").then(m => ({ default: m.ConfigTab })));
-const AuvoHoursReport = lazy(() => import("./auvo/AuvoHoursReport").then(m => ({ default: m.AuvoHoursReport })));
+
 
 interface LeftPanelProps {
   editingOS: OSRecord | null;
