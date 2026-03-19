@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { UserPlus, Trash2, Clock, Mail } from "lucide-react";
+import { HoursImportDialog } from "./employees/HoursImportDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
