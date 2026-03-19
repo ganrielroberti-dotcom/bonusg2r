@@ -136,9 +136,12 @@ export function EmployeesTab() {
 
       {/* Employees list with hours */}
       <div className="space-y-3">
-        <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
-          <Clock className="w-4 h-4" />
-          Horas Trabalhadas no Mês ({monthKey})
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+            <Clock className="w-4 h-4" />
+            Horas Trabalhadas no Mês ({monthKey})
+          </div>
+          <HoursImportDialog />
         </div>
 
         {db.employees.length === 0 ? (
