@@ -7,7 +7,6 @@ describe("parseTimeString", () => {
   });
 
   it("parses 'X dias e HH:MM:SS'", () => {
-    // 3 dias e 02:19:31 = 72 + 2 = 74 hours + 19min + 31s
     const result = parseTimeString("3 dias e 02:19:31");
     const expected = (74 * 60) + 19 + 31 / 60;
     expect(result).toBeCloseTo(expected, 1);
@@ -26,10 +25,18 @@ describe("parseTimeString", () => {
   it("returns 0 for empty string", () => {
     expect(parseTimeString("")).toBe(0);
   });
+
+  it("parses multi-hour values", () => {
+    expect(parseTimeString("12:14:47")).toBeCloseTo(12 * 60 + 14 + 47 / 60, 1);
+  });
 });
 
 describe("formatMinutesToHHMM", () => {
   it("formats correctly", () => {
     expect(formatMinutesToHHMM(97 * 60 + 6)).toBe("97:06");
+  });
+
+  it("formats zero", () => {
+    expect(formatMinutesToHHMM(0)).toBe("00:00");
   });
 });
