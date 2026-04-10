@@ -153,8 +153,8 @@ async function listTasks(body: { startDate: string; endDate: string; userId?: nu
   const { startDate, endDate, userId } = body;
   const allTasks: unknown[] = [];
   let page = 1;
-  const pageSize = 50; // Auvo API may cap at a lower size than requested
-  const maxPages = 50; // safety limit
+  const pageSize = 50;
+  const maxPages = 50;
 
   while (page <= maxPages) {
     const filter: Record<string, unknown> = { startDate, endDate };
@@ -166,13 +166,87 @@ async function listTasks(body: { startDate: string; endDate: string; userId?: nu
     const { items, totalPages } = extractList(raw as AuvoListResponse);
     allTasks.push(...items);
 
-    // Stop if: empty page, less items than page size, or totalPages says we're done
     if (items.length === 0) break;
     if (page >= totalPages && items.length < pageSize) break;
     page++;
   }
 
   return { tasks: allTasks, count: allTasks.length };
+}
+
+async function syncHours(body: { monthKey: string }) {
+  const { monthKey } = body;
+  if (!monthKey || !/^\d{4}-\d{2}$/.test(monthKey)) {
+    throw new Error("monthKey is required (format: YYYY-MM)");
+  }
+
+  const supabase = getSupabaseAdmin();
+
+  // Get all auvo user mappings
+  const { data: mappings, error: mapError } = await supabase
+    .from("auvo_user_mapping")
+    .select("*");
+  if (mapError) throw new Error("Failed to fetch mappings: " + mapError.message);
+  if (!mappings || mappings.length === 0) {
+    return { synced: 0, errors: [], message: "Nenhum mapeamento Auvo encontrado" };
+  }
+
+  // Calculate date range for the month
+  const [year, month] = monthKey.split("-").map(Number);
+  const startDate = `${String(month).padStart(2, "0")}/01/${year}`;
+  const lastDay = new Date(year, month, 0).getDate();
+  const endDate = `${String(month).padStart(2, "0")}/${String(lastDay).padStart(2, "0")}/${year}`;
+
+  const results: { employeeId: string; employeeName: string; hours: number; taskCount: number }[] = [];
+  const errors: string[] = [];
+
+  for (const mapping of mappings) {
+    try {
+      const { tasks } = await listTasks({
+        startDate,
+        endDate,
+        userId: mapping.auvo_user_id,
+      });
+
+      // Sum durationDecimal for all tasks (including unfinished with check-in)
+      let totalHours = 0;
+      let taskCount = 0;
+      for (const task of tasks as Record<string, unknown>[]) {
+        const dur = parseFloat(String(task.durationDecimal || "0"));
+        if (!isNaN(dur) && dur > 0) {
+          totalHours += dur;
+          taskCount++;
+        }
+      }
+
+      // Round to 2 decimals
+      totalHours = Math.round(totalHours * 100) / 100;
+
+      // Upsert into horas_trabalhadas
+      const { error: upsertError } = await supabase
+        .from("horas_trabalhadas")
+        .upsert(
+          { month_key: monthKey, employee_id: mapping.employee_id, horas: totalHours },
+          { onConflict: "month_key,employee_id" }
+        );
+
+      if (upsertError) {
+        errors.push(`${mapping.auvo_user_name}: ${upsertError.message}`);
+      } else {
+        results.push({
+          employeeId: mapping.employee_id,
+          employeeName: mapping.auvo_user_name,
+          hours: totalHours,
+          taskCount,
+        });
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Unknown error";
+      errors.push(`${mapping.auvo_user_name}: ${msg}`);
+    }
+  }
+
+  return { synced: results.length, results, errors };
 }
 
 async function listUsers() {
@@ -215,6 +289,9 @@ Deno.serve(async (req: Request) => {
         break;
       case "list-users":
         result = await listUsers();
+        break;
+      case "sync-hours":
+        result = await syncHours(body);
         break;
       default:
         return new Response(JSON.stringify({ error: `Unknown action: ${action}` }), {
