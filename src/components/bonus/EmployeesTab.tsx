@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { UserPlus, Trash2, Clock, Mail } from "lucide-react";
+import { UserPlus, Trash2, Clock, Mail, RefreshCw } from "lucide-react";
 import { HoursImportDialog } from "./employees/HoursImportDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,7 @@ import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { HoursInput } from "./employees/HoursInput";
 import { toast } from "sonner";
 import { employeeFormSchema, getFirstError } from "@/lib/validations";
+import { useAuvoHoursSync } from "@/hooks/useAuvoIntegration";
 
 export function EmployeesTab() {
   const { db, monthKey, addEmployee, removeEmployee, setHorasTrabalhadas, isLoading } = useBonus();

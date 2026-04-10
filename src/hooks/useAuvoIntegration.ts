@@ -117,3 +117,32 @@ export function useAuvoMappings() {
   return { mappings, isLoading, fetchMappings, addMapping, removeMapping };
 }
 
+export interface AuvoSyncResult {
+  synced: number;
+  results: { employeeId: string; employeeName: string; hours: number; taskCount: number }[];
+  errors: string[];
+  message?: string;
+}
+
+export function useAuvoHoursSync() {
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  const syncHours = useCallback(async (monthKey: string): Promise<AuvoSyncResult | null> => {
+    setIsSyncing(true);
+    try {
+      const result = await callEdgeFunction("auvo-proxy", "sync-hours", { monthKey });
+      return result as AuvoSyncResult;
+    } catch (err) {
+      console.error("Auvo sync error:", err);
+      toast.error("Erro ao sincronizar horas do Auvo", {
+        description: err instanceof Error ? err.message : "Erro desconhecido",
+      });
+      return null;
+    } finally {
+      setIsSyncing(false);
+    }
+  }, []);
+
+  return { syncHours, isSyncing };
+}
+
