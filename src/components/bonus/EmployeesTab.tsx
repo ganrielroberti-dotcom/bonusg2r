@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { UserPlus, Trash2, Clock, Mail } from "lucide-react";
+import { UserPlus, Trash2, Clock, Mail, RefreshCw } from "lucide-react";
 import { HoursImportDialog } from "./employees/HoursImportDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,16 +13,45 @@ import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { HoursInput } from "./employees/HoursInput";
 import { toast } from "sonner";
 import { employeeFormSchema, getFirstError } from "@/lib/validations";
+import { useAuvoHoursSync } from "@/hooks/useAuvoIntegration";
 
 export function EmployeesTab() {
-  const { db, monthKey, addEmployee, removeEmployee, setHorasTrabalhadas, isLoading } = useBonus();
+  const { db, monthKey, addEmployee, removeEmployee, setHorasTrabalhadas, isLoading, refreshDB } = useBonus();
   const { isGestor } = useAuth();
+  const { syncHours, isSyncing } = useAuvoHoursSync();
   const [newName, setNewName] = useState("");
   const [newRole, setNewRole] = useState("");
   const [newEmail, setNewEmail] = useState("");
   const [isAdding, setIsAdding] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleSyncHours = async () => {
+    const result = await syncHours(monthKey);
+    if (!result) return;
+
+    if (result.message) {
+      toast.warning(result.message);
+      return;
+    }
+
+    await refreshDB();
+
+    const desc = result.results
+      .map((r) => `${r.employeeName}: ${r.hours}h (${r.taskCount} tarefas)`)
+      .join("\n");
+
+    toast.success(`${result.synced} colaborador(es) sincronizado(s)`, {
+      description: desc,
+      duration: 8000,
+    });
+
+    if (result.errors.length > 0) {
+      toast.error(`${result.errors.length} erro(s) na sincronização`, {
+        description: result.errors.join("; "),
+      });
+    }
+  };
 
   const getHoras = (empId: string) => {
     return db.horasTrabalhadas[monthKey]?.[empId] || 0;
@@ -141,7 +170,19 @@ export function EmployeesTab() {
             <Clock className="w-4 h-4" />
             Horas Trabalhadas no Mês ({monthKey})
           </div>
-          <HoursImportDialog />
+          <div className="flex items-center gap-2">
+            <HoursImportDialog />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleSyncHours}
+              disabled={isSyncing}
+              className="gap-2"
+            >
+              <RefreshCw className={`w-4 h-4 ${isSyncing ? "animate-spin" : ""}`} />
+              {isSyncing ? "Sincronizando..." : "Sync Auvo"}
+            </Button>
+          </div>
         </div>
 
         {db.employees.length === 0 ? (
