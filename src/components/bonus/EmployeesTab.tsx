@@ -170,7 +170,19 @@ export function EmployeesTab() {
             <Clock className="w-4 h-4" />
             Horas Trabalhadas no Mês ({monthKey})
           </div>
-          <HoursImportDialog />
+          <div className="flex items-center gap-2">
+            <HoursImportDialog />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleSyncHours}
+              disabled={isSyncing}
+              className="gap-2"
+            >
+              <RefreshCw className={`w-4 h-4 ${isSyncing ? "animate-spin" : ""}`} />
+              {isSyncing ? "Sincronizando..." : "Sync Auvo"}
+            </Button>
+          </div>
         </div>
 
         {db.employees.length === 0 ? (
